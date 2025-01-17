@@ -1,0 +1,67 @@
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import supervisorApi from './api/supervisor/supervisor+api.js';
+import singleSupervisorApi from './api/supervisor/[id]+api.js';
+import storekeeperApi from './api/storekeeper/storekeeper+api.js';
+import singleStorekeeperApi from './api/storekeeper/[id]+api.js';
+import salesApi from './api/salesRep/salesRep+api.js';
+import singleSalesApi from './api/salesRep/[id]+api.js';
+import driverApi from './api/driver/driver+api.js';
+import singleDriverApi from './api/driver/[id]+api.js';
+import clientApi from './api/client/create+api.js';
+import singleClientApi from './api/client/[id]+api.js';
+import orderApi from './api/order/create+api.js';
+import singleOrderApi from './api/order/[id]+api.js';
+import salesOrderApi from './api/order/salesRep+api.js';
+import supervisorAcceptOrderApi from './api/order/acceptedOrders+api.js';
+import storekeeperAcceptOrderApi from './api/order/acceptedStorekeeper+api.js';
+import getFcmApi from './api/getFcmToken+api.js';
+import acceptedSupervisorApi from './api/acceptSupervisor/[id]+api.js';
+import acceptedStorekeeperApi from './api/acceptStorekeeper/[id]+api.js';
+import deliverdApi from './api/delivered/[id]+api.js';
+
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Mount the API routes under /api
+app.use('/api', supervisorApi);
+app.use('/api', singleSupervisorApi);
+app.use('/api', storekeeperApi);
+app.use('/api', singleStorekeeperApi);
+app.use('/api', salesApi);
+app.use('/api', singleSalesApi);
+app.use('/api', driverApi);
+app.use('/api', singleDriverApi);
+app.use('/api', clientApi);
+app.use('/api', singleClientApi);
+app.use('/api', orderApi);
+app.use('/api', singleOrderApi);
+app.use('/api/order', salesOrderApi);
+app.use('/api/order', supervisorAcceptOrderApi); // Mount under /api/order
+app.use('/api/order', storekeeperAcceptOrderApi);
+app.use('/api', getFcmApi);
+app.use('/api', acceptedSupervisorApi);
+app.use('/api', acceptedStorekeeperApi);
+app.use('/api', deliverdApi);
+
+
+// Error-handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    details: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+  });
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+  console.log(`Try accessing: http://localhost:${PORT}/api/order/orders/supervisorAccept?page=1&limit=10`);
+});
