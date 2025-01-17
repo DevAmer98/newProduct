@@ -1,6 +1,6 @@
-require('dotenv').config();
+import 'dotenv/config';
+import admin from 'firebase-admin';
 
-const admin = require('firebase-admin');
 
 const serviceAccount = {
   type: process.env.FIREBASE_TYPE,
