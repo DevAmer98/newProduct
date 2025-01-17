@@ -204,7 +204,7 @@ const router = express.Router();
 
 // Firebase Admin Initialization (if not already initialized)
 if (admin.apps.length === 0) {
-  const serviceAccount = require('../../secrets/new-product-28188-firebase-adminsdk-519rh-4906ca32b7.json');
+  const serviceAccount = require('../../firebase-init');
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });

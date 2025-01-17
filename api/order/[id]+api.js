@@ -228,7 +228,7 @@ const router = express.Router();
 if (admin.apps.length === 0) {
   // Use createRequire to load the JSON file
   const require = createRequire(import.meta.url);
-  const serviceAccount = require('../../secrets/new-product-28188-firebase-adminsdk-519rh-4906ca32b7.json');
+  const serviceAccount = require('../../firebase-init');
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
