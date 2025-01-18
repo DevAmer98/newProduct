@@ -219,21 +219,12 @@ export async function DELETE(request: Request) {
 import express from 'express';
 import pkg from 'pg'; // Import the default export
 const { Pool } = pkg; // Destructure Pool from the default export
-import admin from 'firebase-admin';
+import admin from '../../firebase-init.js';
 import { createRequire } from 'module'; // Use createRequire to load JSON
 
 const router = express.Router();
 
-// Firebase Admin Initialization (if not already initialized)
-if (admin.apps.length === 0) {
-  // Use createRequire to load the JSON file
-  const require = createRequire(import.meta.url);
-  const serviceAccount = require('../../firebase-init');
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
 
 // Create a connection pool
 const pool = new Pool({

@@ -2,17 +2,9 @@
     import pkg from 'pg'; // New
     const { Pool } = pkg; // Destructure Pool
     import express from 'express';
-import admin from 'firebase-admin'; // Ensure Firebase Admin is initialized
-
+    import admin from '../../firebase-init.js';
 const router = express.Router();
 
-// Firebase Admin Initialization (if not already initialized)
-if (admin.apps.length === 0) {
-  const serviceAccount = require('../../firebase-init');
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
 
 // Initialize PostgreSQL connection pool
 const pool = new Pool({
