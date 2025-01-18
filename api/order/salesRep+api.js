@@ -195,20 +195,13 @@ export async function GET(request: Request) {
 
 import express from 'express';
 import moment from 'moment-timezone'; // Ensure moment-timezone is installed
-import admin from 'firebase-admin';
+import admin from '../../firebase-init.js';
 import pkg from 'pg'; // New
 const { Pool } = pkg; // Destructure Pool
 
 const router = express.Router();
 
 
-// Firebase Admin Initialization (if not already initialized)
-if (admin.apps.length === 0) {
-  const serviceAccount = require('../../firebase-init');
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
 
 // PostgreSQL connection pool
 const pool = new Pool({
