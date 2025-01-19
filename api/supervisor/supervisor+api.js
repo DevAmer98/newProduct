@@ -362,13 +362,13 @@ async function createClerkUser(email, password, name, role) {
 async function sendWelcomeEmail(email, name, temporaryPassword, role) {
   try {
     const emailContent = `
-      <h2>Welcome ${name}!</h2>
-      <p>Your ${role} account has been created successfully.</p>
-      <p>Here are your login credentials:</p>
-      <p>Email: ${email}</p>
-      <p>Temporary Password: ${temporaryPassword}</p>
-      <p>Please change your password after your first login.</p>
-      <a href="${process.env.BASE_URL || 'http://192.168.1.103:8081'}/sign-in" style="
+      <h2>مرحبًا ${name}!</h2>
+      <p>لقد تم إنشاء حسابك ${role} بنجاح.</p>
+      <p>إليك بيانات تسجيل الدخول الخاصة بك:</p>
+      <p>البريد الإلكتروني: ${email}</p>
+      <p>كلمة المرور المؤقتة: ${temporaryPassword}</p>
+      <p>يرجى تغيير كلمة المرور الخاصة بك بعد تسجيل الدخول الأول.</p>
+      <a href="${process.env.BASE_URL || 'http://localhost:3000'}/sign-in" style="
         background-color: #4CAF50;
         border: none;
         color: white;
@@ -380,7 +380,7 @@ async function sendWelcomeEmail(email, name, temporaryPassword, role) {
         margin: 4px 2px;
         cursor: pointer;
         border-radius: 4px;">
-        Open New Product App
+        فتح تطبيق المنتج الجديد
       </a>
     `;
 
