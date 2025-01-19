@@ -362,27 +362,30 @@ async function createClerkUser(email, password, name, role) {
 async function sendWelcomeEmail(email, name, temporaryPassword, role) {
   try {
     const emailContent = `
-      <h2>مرحبًا ${name}!</h2>
-      <p>لقد تم إنشاء حسابك كـ${role} بنجاح.</p>
-      <p>إليك بيانات تسجيل الدخول الخاصة بك:</p>
-      <p>البريد الإلكتروني: ${email}</p>
-      <p>كلمة المرور المؤقتة: ${temporaryPassword}</p>
-      <p>يرجى تغيير كلمة المرور الخاصة بك بعد تسجيل الدخول الأول.</p>
-      <a href="${process.env.BASE_URL || 'http://localhost:3000'}/sign-in" style="
-        background-color: #4CAF50;
-        border: none;
-        color: white;
-        padding: 15px 32px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-        border-radius: 4px;">
-        فتح تطبيق المنتج الجديد
-      </a>
-    `;
+  <div style="direction: rtl; text-align: right;">
+    <h2>مرحبًا ${name}!</h2>
+    <p>لقد تم إنشاء حسابك كـ ${role === 'supervisor' ? 'مشرف' : role} بنجاح.</p>
+    <p>إليك بيانات تسجيل الدخول الخاصة بك:</p>
+    <p>البريد الإلكتروني: ${email}</p>
+    <p>كلمة المرور المؤقتة: ${temporaryPassword}</p>
+    <p>يرجى تغيير كلمة المرور الخاصة بك بعد تسجيل الدخول الأول.</p>
+    <a href="${process.env.BASE_URL || 'http://localhost:3000'}/sign-in" style="
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 15px 32px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;">
+      فتح تطبيق المنتج الجديد
+    </a>
+  </div>
+`;
+
 
     const msg = {
       to: email,

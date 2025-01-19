@@ -632,8 +632,9 @@ async function createClerkUser(email, password, name, role) {
 async function sendWelcomeEmail(email, name, temporaryPassword, role) {
   try {
     const emailContent = `
+    <div style="direction: rtl; text-align: right;">
       <h2>مرحبًا ${name}!</h2>
-      <p>لقد تم إنشاء حسابك ${role} بنجاح.</p>
+      <p>لقد تم إنشاء حسابك كـ ${role === 'driver' ? 'سائق' : role} بنجاح.</p>
       <p>إليك بيانات تسجيل الدخول الخاصة بك:</p>
       <p>البريد الإلكتروني: ${email}</p>
       <p>كلمة المرور المؤقتة: ${temporaryPassword}</p>
@@ -652,7 +653,8 @@ async function sendWelcomeEmail(email, name, temporaryPassword, role) {
         border-radius: 4px;">
         فتح تطبيق المنتج الجديد
       </a>
-    `;
+    </div>
+  `;
 
 
     const msg = {
