@@ -363,7 +363,7 @@ async function sendWelcomeEmail(email, name, temporaryPassword, role) {
   try {
     const emailContent = `
       <h2>مرحبًا ${name}!</h2>
-      <p>لقد تم إنشاء حسابك ${role} بنجاح.</p>
+      <p>لقد تم إنشاء حسابك كـ${role} بنجاح.</p>
       <p>إليك بيانات تسجيل الدخول الخاصة بك:</p>
       <p>البريد الإلكتروني: ${email}</p>
       <p>كلمة المرور المؤقتة: ${temporaryPassword}</p>
