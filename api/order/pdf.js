@@ -37,7 +37,7 @@ export async function generatePDF(orderData, filePath = null) {
     });
 
     // Populate the template with order data
-    doc.setData({
+    const data = {
       client_id: orderData.client_id,
       username: orderData.username,
       delivery_date: orderData.delivery_date,
@@ -59,10 +59,10 @@ export async function generatePDF(orderData, filePath = null) {
         price: product.price,
         total_price: product.total_price,
       })),
-    });
+    };
 
-    // Render the document
-    doc.render();
+    // Render the document with the data
+    doc.render(data);
 
     // Generate the DOCX file
     const docxBuffer = doc.getZip().generate({ type: 'nodebuffer' });
