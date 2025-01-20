@@ -7,6 +7,8 @@ import PDFDocument from 'pdfkit'; // Import PDFKit
 import pg from 'pg'; // Import the entire pg module
 const { Pool } = pg; // Destructure Pool from the pg module
 import mammoth from 'mammoth';
+import libre from 'libreoffice-convert'; // For .docx to PDF conversion
+
 
 // Derive __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -23,76 +25,67 @@ const pool = new Pool({
  * @param {string} filePath - The path to save the PDF (optional).
  * @returns {Promise<Buffer>} - Returns the PDF buffer for streaming.
  */
-export async function generatePDF(orderData, filePath = null) {
-  try {
-    // Create a PDF document
-    const doc = new PDFDocument();
 
-    // If filePath is provided, pipe the PDF to a file
+
+/**
+ * Generates a PDF from a .docx template using docxtemplater and libreoffice-convert.
+ * @param {Object} orderData - The order data to populate the template.
+ * @param {string} templatePath - The path to the .docx template file.
+ * @param {string} filePath - The path to save the PDF (optional).
+ * @returns {Promise<Buffer>} - Returns the PDF buffer for streaming.
+ */
+export async function generatePDF(orderData, templatePath, filePath = null) {
+  try {
+    // Step 1: Generate the .docx file from the template
+    const templateContent = fs.readFileSync(templatePath, 'binary');
+    const zip = new PizZip(templateContent);
+    const doc = new Docxtemplater().loadZip(zip);
+
+    // Populate the template with data
+    doc.setData(orderData);
+
+    // Render the document (replace all placeholders with data)
+    doc.render();
+
+    // Generate the .docx buffer
+    const docxBuffer = doc.getZip().generate({ type: 'nodebuffer' });
+
+    // Step 2: Convert the .docx buffer to a PDF
+    const pdfBuffer = await convertDocxToPDF(docxBuffer);
+
+    // If filePath is provided, save the PDF file
     if (filePath) {
       const dir = path.dirname(filePath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      doc.pipe(fs.createWriteStream(filePath));
+      fs.writeFileSync(filePath, pdfBuffer);
     }
 
-    // Add content to the PDF
-    doc.fontSize(25).text(`Order ID: ${orderData.id}`, { align: 'center' });
-    doc.moveDown();
-
-    // Client Information
-    doc.fontSize(16).text(`Client Name: ${orderData.client_name}`);
-    doc.text(`Company Name: ${orderData.company_name}`);
-    doc.text(`Phone Number: ${orderData.phone_number}`);
-    doc.text(`Delivery Date: ${orderData.delivery_date}`);
-    doc.moveDown();
-
-    // Address Information
-    doc.text(`Street: ${orderData.street}`);
-    doc.text(`City: ${orderData.city}`);
-    doc.text(`Region: ${orderData.region}`);
-    doc.moveDown();
-
-    // Products Table
-    doc.fontSize(14).text('Products:', { underline: true });
-    doc.moveDown();
-
-    // Table Header
-    doc.font('Helvetica-Bold').text('Description', 100, doc.y);
-    doc.text('Quantity', 300, doc.y);
-    doc.text('Price', 400, doc.y);
-    doc.text('Total', 500, doc.y);
-    doc.moveDown();
-
-    // Table Rows
-    doc.font('Helvetica');
-    orderData.products.forEach((product) => {
-      doc.text(product.description, 100, doc.y);
-      doc.text(product.quantity.toString(), 300, doc.y);
-      doc.text(`$${product.price}`, 400, doc.y);
-      doc.text(`$${product.total_price}`, 500, doc.y);
-      doc.moveDown();
-    });
-
-    // Finalize the PDF
-    doc.end();
-
-    // If filePath is not provided, return the PDF as a buffer
-    if (!filePath) {
-      const chunks = [];
-      doc.on('data', (chunk) => chunks.push(chunk));
-      return new Promise((resolve, reject) => {
-        doc.on('end', () => resolve(Buffer.concat(chunks)));
-        doc.on('error', (error) => reject(error));
-      });
-    }
+    // Return the PDF buffer
+    return pdfBuffer;
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw new Error(`Failed to generate PDF: ${error.message}`);
   }
 }
 
+/**
+ * Converts a .docx buffer to a PDF buffer using libreoffice-convert.
+ * @param {Buffer} docxBuffer - The .docx file as a buffer.
+ * @returns {Promise<Buffer>} - The PDF file as a buffer.
+ */
+async function convertDocxToPDF(docxBuffer) {
+  return new Promise((resolve, reject) => {
+    libre.convert(docxBuffer, '.pdf', undefined, (err, pdfBuffer) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(pdfBuffer);
+      }
+    });
+  });
+}
 /**
  * Fetches order data from the database.
  * @param {string} orderId - The ID of the order.
@@ -143,7 +136,8 @@ export async function servePDF(orderId, res) {
     const orderData = await fetchOrderDataFromDatabase(orderId);
 
     // Generate the PDF
-    const pdfBuffer = await generatePDF(orderData);
+    const templatePath = path.resolve(__dirname, 'template.docx');
+    const pdfBuffer = await generatePDF(orderData, templatePath);
 
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
