@@ -36,21 +36,31 @@ const pool = new Pool({
  */
 export async function generatePDF(orderData, templatePath, filePath = null) {
   try {
-    // Step 1: Generate the .docx file from the template
+    // Step 1: Load the .docx template
     const templateContent = fs.readFileSync(templatePath, 'binary');
     const zip = new PizZip(templateContent);
-    const doc = new Docxtemplater().loadZip(zip);
 
-    // Populate the template with data
+    // Step 2: Initialize Docxtemplater with the PizZip instance
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    });
+
+    // Step 3: Populate the template with data
     doc.setData(orderData);
 
-    // Render the document (replace all placeholders with data)
-    doc.render();
+    // Step 4: Render the document (replace all placeholders with data)
+    try {
+      doc.render();
+    } catch (error) {
+      console.error('Error rendering template:', error);
+      throw new Error(`Failed to render template: ${error.message}`);
+    }
 
-    // Generate the .docx buffer
+    // Step 5: Generate the .docx buffer
     const docxBuffer = doc.getZip().generate({ type: 'nodebuffer' });
 
-    // Step 2: Convert the .docx buffer to a PDF
+    // Step 6: Convert the .docx buffer to a PDF
     const pdfBuffer = await convertDocxToPDF(docxBuffer);
 
     // If filePath is provided, save the PDF file
@@ -137,7 +147,7 @@ export async function servePDF(orderId, res) {
 
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
-        const pdfBuffer = await generatePDF(orderData, templatePath);
+    const pdfBuffer = await generatePDF(orderData, templatePath);
 
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
