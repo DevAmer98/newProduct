@@ -94,6 +94,7 @@ export async function generatePDF(orderData, filePath = null) {
 async function convertDocxToPdf(docxBuffer) {
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: '/home/newProduct/chromium/chrome-linux/chrome', // Path to local Chromium
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
