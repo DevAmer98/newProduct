@@ -136,7 +136,7 @@ export async function servePDF(orderId, res) {
     const orderData = await fetchOrderDataFromDatabase(orderId);
 
     // Generate the PDF
-    const templatePath = path.resolve(__dirname, 'template.docx');
+    const templatePath = path.resolve(__dirname, '..','..', 'template.docx');
     const pdfBuffer = await generatePDF(orderData, templatePath);
 
     // Set headers for mobile compatibility
