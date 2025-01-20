@@ -465,7 +465,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
 }
 
 // POST endpoint to create an order
-router.post('/orders', async (req, res) => {
+router.post('/orders/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
     await executeWithRetry(async () => {
