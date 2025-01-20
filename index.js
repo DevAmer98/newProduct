@@ -20,7 +20,7 @@ import getFcmApi from './api/getFcmToken+api.js';
 import acceptedSupervisorApi from './api/acceptSupervisor/[id]+api.js';
 import acceptedStorekeeperApi from './api/acceptStorekeeper/[id]+api.js';
 import deliverdApi from './api/delivered/[id]+api.js';
-
+import { servePDF } from './api/order/pdf.js'; // Import the servePDF function
 
 const app = express();
 
@@ -49,6 +49,11 @@ app.use('/api', acceptedSupervisorApi);
 app.use('/api', acceptedStorekeeperApi);
 app.use('/api', deliverdApi);
 
+// New endpoint to generate and serve PDFs
+app.get('/api/order/pdf/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+  await servePDF(orderId, res);
+});
 
 // Error-handling middleware
 app.use((err, req, res, next) => {
@@ -63,5 +68,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  console.log(`Try accessing: http://localhost:${PORT}/api/order/orders/supervisorAccept?page=1&limit=10`);
+  console.log(`Try accessing: http://localhost:${PORT}/api/order/pdf/123`); // Replace 123 with a valid order ID
 });

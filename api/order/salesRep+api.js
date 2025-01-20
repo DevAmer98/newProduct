@@ -486,7 +486,7 @@ router.post('/orders', async (req, res) => {
         10000 // 10-second timeout
       );
       const orderId = orderResult.rows[0].id;
-
+ 
       let totalPrice = 0;
       for (const product of products) {
         totalPrice += parseFloat(product.price);
