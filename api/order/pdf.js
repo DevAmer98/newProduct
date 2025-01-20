@@ -212,7 +212,8 @@ import PizZip from 'pizzip';
 import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer';
-import { Pool } from 'pg'; // Import the PostgreSQL pool
+import pg from 'pg'; // Import the entire pg module
+const { Pool } = pg; // Destructure Pool from the pg module
 import mammoth from 'mammoth';
 
 // Create a connection pool
