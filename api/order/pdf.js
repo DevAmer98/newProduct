@@ -3,7 +3,7 @@ import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import fs from 'fs';
 import path from 'path';
-import puppeteer from 'puppeteer';
+import PDFDocument from 'pdfkit'; // Import PDFKit
 import pg from 'pg'; // Import the entire pg module
 const { Pool } = pg; // Destructure Pool from the pg module
 import mammoth from 'mammoth';
@@ -18,101 +18,81 @@ const pool = new Pool({
 });
 
 /**
- * Generates a PDF from a DOCX template using order data.
+ * Generates a PDF from order data using PDFKit.
  * @param {Object} orderData - The order data to populate the template.
  * @param {string} filePath - The path to save the PDF (optional).
  * @returns {Promise<Buffer>} - Returns the PDF buffer for streaming.
  */
 export async function generatePDF(orderData, filePath = null) {
   try {
-    // Load the DOCX template
-    const templatePath = path.join(__dirname, '..', '..', 'templates', 'Quotation.docx'); // Path to the DOCX template
-    console.log('Template path:', templatePath); // Debugging
+    // Create a PDF document
+    const doc = new PDFDocument();
 
-    const content = fs.readFileSync(templatePath, 'binary');
-    const zip = new PizZip(content);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-    });
-
-    // Populate the template with order data
-    const data = {
-      client_id: orderData.client_id,
-      username: orderData.username,
-      delivery_date: orderData.delivery_date,
-      delivery_type: orderData.delivery_type,
-      notes: orderData.notes,
-      status: orderData.status,
-      supervisoraccept: orderData.supervisoraccept,
-      storekeeperaccept: orderData.storekeeperaccept,
-      client_name: orderData.client_name,
-      client_phone: orderData.phone_number,
-      client_street: orderData.street,
-      client_city: orderData.city,
-      client_region: orderData.region,
-      products: orderData.products.map(product => ({
-        section: product.section,
-        type: product.type,
-        description: product.description,
-        quantity: product.quantity,
-        price: product.price,
-        total_price: product.total_price,
-      })),
-    };
-
-    // Render the document with the data
-    doc.render(data);
-
-    // Generate the DOCX file
-    const docxBuffer = doc.getZip().generate({ type: 'nodebuffer' });
-
-    // Convert DOCX to PDF using Puppeteer
-    const pdfBuffer = await convertDocxToPdf(docxBuffer);
-
-    // Save the PDF to a file (if filePath is provided)
+    // If filePath is provided, pipe the PDF to a file
     if (filePath) {
       const dir = path.dirname(filePath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(filePath, pdfBuffer);
+      doc.pipe(fs.createWriteStream(filePath));
     }
 
-    return pdfBuffer;
+    // Add content to the PDF
+    doc.fontSize(25).text(`Order ID: ${orderData.id}`, { align: 'center' });
+    doc.moveDown();
+
+    // Client Information
+    doc.fontSize(16).text(`Client Name: ${orderData.client_name}`);
+    doc.text(`Company Name: ${orderData.company_name}`);
+    doc.text(`Phone Number: ${orderData.phone_number}`);
+    doc.text(`Delivery Date: ${orderData.delivery_date}`);
+    doc.moveDown();
+
+    // Address Information
+    doc.text(`Street: ${orderData.street}`);
+    doc.text(`City: ${orderData.city}`);
+    doc.text(`Region: ${orderData.region}`);
+    doc.moveDown();
+
+    // Products Table
+    doc.fontSize(14).text('Products:', { underline: true });
+    doc.moveDown();
+
+    // Table Header
+    doc.font('Helvetica-Bold').text('Description', 100, doc.y);
+    doc.text('Quantity', 300, doc.y);
+    doc.text('Price', 400, doc.y);
+    doc.text('Total', 500, doc.y);
+    doc.moveDown();
+
+    // Table Rows
+    doc.font('Helvetica');
+    orderData.products.forEach((product) => {
+      doc.text(product.description, 100, doc.y);
+      doc.text(product.quantity.toString(), 300, doc.y);
+      doc.text(`$${product.price}`, 400, doc.y);
+      doc.text(`$${product.total_price}`, 500, doc.y);
+      doc.moveDown();
+    });
+
+    // Finalize the PDF
+    doc.end();
+
+    // If filePath is not provided, return the PDF as a buffer
+    if (!filePath) {
+      const chunks = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      return new Promise((resolve, reject) => {
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', (error) => reject(error));
+      });
+    }
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw new Error(`Failed to generate PDF: ${error.message}`);
   }
 }
 
-/**
- * Converts a DOCX buffer to a PDF buffer using Puppeteer.
- * @param {Buffer} docxBuffer - The DOCX file buffer.
- * @returns {Promise<Buffer>} - The PDF file buffer.
- */
-
-async function convertDocxToPdf(docxBuffer) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-  const page = await browser.newPage();
-
-  // Convert DOCX to HTML using mammoth
-  const { value: htmlContent } = await mammoth.extractRawText({ buffer: docxBuffer });
-
-  await page.setContent(htmlContent);
-  const pdfBuffer = await page.pdf({
-    format: 'A4',
-    margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' },
-    printBackground: true,
-    preferCSSPageSize: true,
-  });
-  await browser.close();
-
-  return pdfBuffer;
-}
 /**
  * Fetches order data from the database.
  * @param {string} orderId - The ID of the order.
