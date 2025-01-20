@@ -91,10 +91,10 @@ export async function generatePDF(orderData, filePath = null) {
  * @param {Buffer} docxBuffer - The DOCX file buffer.
  * @returns {Promise<Buffer>} - The PDF file buffer.
  */
+
 async function convertDocxToPdf(docxBuffer) {
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: '/home/newProduct/chromium/chrome-linux/chrome', // Path to local Chromium
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
@@ -113,7 +113,6 @@ async function convertDocxToPdf(docxBuffer) {
 
   return pdfBuffer;
 }
-
 /**
  * Fetches order data from the database.
  * @param {string} orderId - The ID of the order.
