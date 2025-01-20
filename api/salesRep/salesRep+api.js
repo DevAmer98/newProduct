@@ -282,4 +282,57 @@ router.get('/salesreps', async (req, res) => {
   }
 });
 
+
+
+
+// GET /salesreps/emails (new endpoint)
+router.get('/salesreps/emails', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { email } = req.query; // Get the email from query parameters
+
+    // Validate email format (optional)
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or missing email',
+      });
+    }
+
+    const query = 'SELECT * FROM salesreps WHERE email = $1';
+    const result = await executeWithRetry(async () => {
+      return await withTimeout(client.query(query, [email]), 10000); // 10-second timeout
+    });
+
+    if (!result) {
+      console.error('No result from the query.');
+      throw new Error('No result from the query.');
+    }
+
+    const sales = result.rows;
+
+    if (sales.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sales representative not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      salesRep: sales[0], // Return the first matching sales rep
+    });
+  } catch (error) {
+    console.error('Error fetching sales representative:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch sales representative',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
+  } finally {
+    client.release();
+  }
+});
+
+
 export default router;

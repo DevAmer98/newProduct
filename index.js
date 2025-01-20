@@ -68,5 +68,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  console.log(`Try accessing: http://localhost:${PORT}/api/order/pdf/123`); // Replace 123 with a valid order ID
 });

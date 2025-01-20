@@ -125,9 +125,17 @@ async function fetchOrderDataFromDatabase(orderId) {
     `;
     const productsResult = await pool.query(productsQuery, [orderId]);
 
+    const salesRepQuery = `
+    SELECT name, email, phone FROM salesreps
+    WHERE id = $1
+  `;
+  const salesRepResult = await pool.query(salesRepQuery, [orderResult.rows[0].sales_rep_id]);
+
     return {
       ...orderResult.rows[0],
       products: productsResult.rows,
+      salesRep: salesRepResult.rows[0] || {}, // Include sales representative data
+
     };
   } catch (error) {
     console.error('Error fetching order data:', error);
