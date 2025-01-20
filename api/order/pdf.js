@@ -26,7 +26,7 @@ const pool = new Pool({
 export async function generatePDF(orderData, filePath = null) {
   try {
     // Load the DOCX template
-    const templatePath = path.join(__dirname, '..', 'templates', 'Quotation.docx'); // Path to the DOCX template
+    const templatePath = path.join(__dirname, '..', '..', 'templates', 'Quotation.docx'); // Path to the DOCX template
     console.log('Template path:', templatePath); // Debugging
 
     const content = fs.readFileSync(templatePath, 'binary');
