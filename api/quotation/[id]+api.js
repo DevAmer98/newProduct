@@ -58,12 +58,12 @@ router.get('/quotations/:id', async (req, res) => {
 
   try {
     const quotationQuery = `
-      SELECT o.*, c.company_name, c.client_name, c.phone_number, 
+      SELECT q.*, c.company_name, c.client_name, c.phone_number, 
              c.tax_number, c.branch_number, c.latitude, c.longitude, 
-             c.street, c.city, c.region, o.storekeeper_notes
-      FROM quotations o
-      JOIN clients c ON o.client_id = c.id
-      WHERE o.id = $1
+             c.street, c.city, c.region, q.storekeeper_notes
+      FROM quotations q
+      JOIN clients c ON q.client_id = c.id
+      WHERE q.id = $1
     `;
 
     const quotationResult = await executeWithRetry(async () => {
@@ -167,7 +167,7 @@ router.put('/quotations/:id', async (req, res) => {
         await executeWithRetry(async () => {
           return await withTimeout(
             pool.query(
-              `INSERT INTO quotation_products (order_id, section, type, description, quantity,price) 
+              `INSERT INTO quotation_products (quotation_id, section, type, description, quantity,price) 
                VALUES ($1, $2, $3, $4, $5, $6)`,
               [id, section, type, description, quantity, price]
             ),
