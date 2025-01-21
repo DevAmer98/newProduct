@@ -12,7 +12,7 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000, 
-});
+}); 
 
 // Utility function to retry database operations
 const executeWithRetry = async (fn, retries = 3, delay = 1000) => {
@@ -117,6 +117,7 @@ router.put('/orders/:id', async (req, res) => {
       status = 'not Delivered',
       storekeeperaccept = 'pending',
       supervisoraccept = 'pending',
+      total_price,
     } = body;
 
     // Set `actual_delivery_date` if the status is "delivered"
@@ -134,7 +135,8 @@ router.put('/orders/:id', async (req, res) => {
           updated_at = CURRENT_TIMESTAMP,
           actual_delivery_date = COALESCE($8, actual_delivery_date),
           storekeeper_notes = $9
-      WHERE id = $10
+          total_price = $10
+      WHERE id = $11
     `;
 
     await executeWithRetry(async () => {
@@ -149,6 +151,7 @@ router.put('/orders/:id', async (req, res) => {
           supervisoraccept,
           actualDeliveryDate,
           body.storekeeper_notes || null,
+          total_price,
           id,
         ]),
         10000 // 10-second timeout

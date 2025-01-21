@@ -59,7 +59,7 @@ router.post('/orders', async (req, res) => {
       if (typeof delivery_date === 'string') {
         const date = new Date(delivery_date);
         formattedDate = date.toISOString().slice(0, 19).replace('T', ' ');
-      }
+      } 
 
       const orderPromise = client.query(
         `INSERT INTO orders (client_id, delivery_date, delivery_type, notes, status, storekeeperaccept, supervisoraccept, actual_delivery_date, total_price)
