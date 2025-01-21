@@ -155,6 +155,8 @@ export async function servePDF(orderId, res) {
   try {
     // Fetch order data from the database
     const orderData = await fetchOrderDataFromDatabase(orderId);
+    console.log('Order Data:', orderData); // Log the orderData object
+
 
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
