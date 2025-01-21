@@ -9,6 +9,7 @@ const { Pool } = pg; // Destructure Pool from the pg module
 import mammoth from 'mammoth';
 import libre from 'libreoffice-convert'; // For .docx to PDF conversion
 
+
 // Derive __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +18,14 @@ const __dirname = path.dirname(__filename);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+/**
+ * Generates a PDF from order data using PDFKit.
+ * @param {Object} orderData - The order data to populate the template.
+ * @param {string} filePath - The path to save the PDF (optional).
+ * @returns {Promise<Buffer>} - Returns the PDF buffer for streaming.
+ */
+
 
 /**
  * Generates a PDF from a .docx template using docxtemplater and libreoffice-convert.
@@ -87,7 +96,6 @@ async function convertDocxToPDF(docxBuffer) {
     });
   });
 }
-
 /**
  * Fetches order data from the database.
  * @param {string} orderId - The ID of the order.
@@ -117,13 +125,26 @@ async function fetchOrderDataFromDatabase(orderId) {
     `;
     const productsResult = await pool.query(productsQuery, [orderId]);
 
-    // Return order data without salesRep fields
+    // Fetch sales representative
+    const salesRepQuery = `
+      SELECT name, email, phone FROM salesreps
+      WHERE id = $1
+    `;
+    const salesRepResult = await pool.query(salesRepQuery, [orderResult.rows[0].sales_rep_id]);
+
+    console.log('Sales Rep Query Result:', salesRepResult.rows); // Log the sales rep query result
+
+    // Flatten salesRep fields into the root of the orderData object
     const orderData = {
       ...orderResult.rows[0],
       products: productsResult.rows,
+      name: salesRepResult.rows[0]?.name || 'N/A', // Default value if missing
+      email: salesRepResult.rows[0]?.email || 'N/A', // Default value if missing
+      phone: salesRepResult.rows[0]?.phone || 'N/A', // Default value if missing
     };
 
-    console.log('Order Data:', orderData); // Log the order data
+    console.log('Final Order Data:', orderData); // Log the final orderData object
+
     return orderData;
   } catch (error) {
     console.error('Error fetching order data:', error);
@@ -133,7 +154,7 @@ async function fetchOrderDataFromDatabase(orderId) {
 
 /**
  * Serves the PDF for a given order ID.
- * @param {Object} req - The Express request object.
+ * @param {string} orderId - The ID of the order.
  * @param {Object} res - The Express response object.
  */
 export async function servePDF(req, res) {
