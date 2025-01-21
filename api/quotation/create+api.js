@@ -38,86 +38,84 @@ router.post('/quotations', async (req, res) => {
   const client = await pool.connect();
   try {
     await executeWithRetry(async () => {
-      await client.query('BEGIN');
+      await client.query('BEGIN'); // Start transaction
+
       const {
         client_id,
-        username,
         delivery_date,
         delivery_type,
         products,
         notes,
         status = 'not Delivered',
-        supervisoraccept = 'pending',
         storekeeperaccept = 'pending',
+        supervisoraccept = 'pending',
         manageraccept = 'pending',
       } = req.body;
 
+      // Validate required fields
       if (!client_id || !delivery_date || !delivery_type || !products || products.length === 0) {
+        await client.query('ROLLBACK'); // Rollback if validation fails
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      let formattedDate = delivery_date;
-      if (typeof delivery_date === 'string') {
-        const date = new Date(delivery_date);
-        formattedDate = date.toISOString().slice(0, 19).replace('T', ' ');
-      } 
-
-      const quotationPromise = client.query(
-        `INSERT INTO quotations (client_id, delivery_date, delivery_type, notes, status, storekeeperaccept, supervisoraccept,manageracceptو actual_delivery_date, total_price)
+      // Insert quotation
+      const quotationResult = await client.query(
+        `INSERT INTO quotations (client_id, delivery_date, delivery_type, notes, status, storekeeperaccept, supervisoraccept, manageraccept, actual_delivery_date, total_price)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
         [
           client_id,
-          formattedDate,
+          delivery_date,
           delivery_type,
           notes || null,
           status,
           storekeeperaccept,
           supervisoraccept,
           manageraccept,
-          null,
-          0,
+          null, // actual_delivery_date
+          0, // total_price (initial value)
         ]
       );
 
-      const quotationResult = await withTimeout(quotationPromise, 10000);
       const quotationId = quotationResult.rows[0].id;
-
       let totalPrice = 0;
 
+      // Insert products
       for (const product of products) {
         const { section, type, description, quantity, price } = product;
 
+        // Validate product fields
         if (!section || !type || !quantity || !price) {
-          await client.query('ROLLBACK');
+          await client.query('ROLLBACK'); // Rollback if product validation fails
           return res.status(400).json({ error: 'Missing product details or price' });
         }
 
         const numericPrice = parseFloat(price);
-
         if (isNaN(numericPrice)) {
-          await client.query('ROLLBACK');
+          await client.query('ROLLBACK'); // Rollback if price is invalid
           return res.status(400).json({ error: 'Invalid price format' });
         }
 
         totalPrice += numericPrice;
 
         await client.query(
-          `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price) 
+          `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price)
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [quotationId, section, type, description, quantity, numericPrice]
         );
       }
 
+      // Update total price
       await client.query(`UPDATE quotations SET total_price = $1 WHERE id = $2`, [totalPrice, quotationId]);
-      await client.query('COMMIT');
+
+      await client.query('COMMIT'); // Commit transaction
       return res.status(201).json({ quotationId, status: 'success', totalPrice });
     });
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK'); // Rollback on any error
     console.error('Error creating quotation:', error);
     return res.status(500).json({ error: error.message || 'Error creating quotation' });
   } finally {
-    client.release();
+    client.release(); // Release the client back to the pool
   }
 });
 
