@@ -125,6 +125,12 @@ async function fetchOrderDataFromDatabase(orderId) {
     `;
     const productsResult = await pool.query(productsQuery, [orderId]);
 
+    // Add product numbers dynamically
+    const productsWithNumbers = productsResult.rows.map((product, index) => ({
+      ...product,
+      productNumber: String(index + 1).padStart(3, '0'), // Format as 001, 002, etc.
+    }));
+
     // Fetch sales representative
     const salesRepQuery = `
       SELECT name, email, phone FROM salesreps
@@ -137,7 +143,7 @@ async function fetchOrderDataFromDatabase(orderId) {
     // Flatten salesRep fields into the root of the orderData object
     const orderData = {
       ...orderResult.rows[0],
-      products: productsResult.rows,
+      products: productsWithNumbers, // Use products with dynamically generated numbers
       name: salesRepResult.rows[0]?.name || 'N/A', // Default value if missing
       email: salesRepResult.rows[0]?.email || 'N/A', // Default value if missing
       phone: salesRepResult.rows[0]?.phone || 'N/A', // Default value if missing
@@ -151,7 +157,6 @@ async function fetchOrderDataFromDatabase(orderId) {
     throw new Error('Failed to fetch order data');
   }
 }
-
 /**
  * Serves the PDF for a given order ID.
  * @param {string} orderId - The ID of the order.
