@@ -125,18 +125,21 @@ async function fetchOrderDataFromDatabase(orderId) {
     `;
     const productsResult = await pool.query(productsQuery, [orderId]);
 
+    // Fetch sales representative
     const salesRepQuery = `
-    SELECT name, email, phone FROM salesreps
-    WHERE id = $1
-  `;
-  const salesRepResult = await pool.query(salesRepQuery, [orderResult.rows[0].sales_rep_id]);
+      SELECT name, email, phone FROM salesreps
+      WHERE id = $1
+    `;
+    const salesRepResult = await pool.query(salesRepQuery, [orderResult.rows[0].sales_rep_id]);
 
-    return {
+    // Flatten salesRep fields into the root of the orderData object
+    const orderData = {
       ...orderResult.rows[0],
       products: productsResult.rows,
-      salesRep: salesRepResult.rows[0] || {}, // Include sales representative data
-
+      ...(salesRepResult.rows[0] || {}), // Flatten salesRep fields
     };
+
+    return orderData;
   } catch (error) {
     console.error('Error fetching order data:', error);
     throw new Error('Failed to fetch order data');
