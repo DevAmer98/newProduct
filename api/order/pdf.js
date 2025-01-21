@@ -157,26 +157,16 @@ async function fetchOrderDataFromDatabase(orderId) {
  * @param {string} orderId - The ID of the order.
  * @param {Object} res - The Express response object.
  */
-export async function servePDF(req, res) {
+export async function servePDF(orderId, res) {
   try {
-    const { orderId, salesRep } = req.body;
-
     // Fetch order data from the database
     const orderData = await fetchOrderDataFromDatabase(orderId);
+    console.log('Order Data:', orderData); // Log the orderData object
 
-    // Combine orderData and salesRep data
-    const combinedData = {
-      ...orderData,
-      name: salesRep?.name || 'N/A', // Default value if missing
-      email: salesRep?.email || 'N/A', // Default value if missing
-      phone: salesRep?.phone || 'N/A', // Default value if missing
-    };
-
-    console.log('Combined Data:', combinedData); // Log the combined data
 
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
-    const pdfBuffer = await generatePDF(combinedData, templatePath);
+    const pdfBuffer = await generatePDF(orderData, templatePath);
 
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
