@@ -134,7 +134,7 @@ router.put('/orders/:id', async (req, res) => {
           supervisoraccept = $7,
           updated_at = CURRENT_TIMESTAMP,
           actual_delivery_date = COALESCE($8, actual_delivery_date),
-          storekeeper_notes = $9
+          storekeeper_notes = $9,
           total_price = $10
       WHERE id = $11
     `;
