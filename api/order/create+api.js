@@ -49,6 +49,7 @@ router.post('/orders', async (req, res) => {
         status = 'not Delivered',
         supervisoraccept = 'pending',
         storekeeperaccept = 'pending',
+        manageraccept = 'pending',
       } = req.body;
 
       if (!client_id || !delivery_date || !delivery_type || !products || products.length === 0) {
@@ -62,8 +63,8 @@ router.post('/orders', async (req, res) => {
       } 
 
       const orderPromise = client.query(
-        `INSERT INTO orders (client_id, delivery_date, delivery_type, notes, status, storekeeperaccept, supervisoraccept, actual_delivery_date, total_price)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        `INSERT INTO orders (client_id, delivery_date, delivery_type, notes, status, storekeeperaccept, supervisoraccept,manageracceptو actual_delivery_date, total_price)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
         [
           client_id,
           formattedDate,
@@ -72,6 +73,7 @@ router.post('/orders', async (req, res) => {
           status,
           storekeeperaccept,
           supervisoraccept,
+          manageraccept,
           null,
           0,
         ]
