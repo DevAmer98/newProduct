@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import managerApi from './api/manager/manager+api.js';
+import singleManagerApi from './api/manager/[id]+api.js';
 import supervisorApi from './api/supervisor/supervisor+api.js';
 import singleSupervisorApi from './api/supervisor/[id]+api.js';
 import storekeeperApi from './api/storekeeper/storekeeper+api.js';
@@ -29,8 +31,10 @@ app.use(cors());
 app.use(express.json());
 
 // Mount the API routes under /api
+app.use('/api', managerApi);
 app.use('/api', supervisorApi);
 app.use('/api', singleSupervisorApi);
+app.use('/api', singleManagerApi);
 app.use('/api', storekeeperApi);
 app.use('/api', singleStorekeeperApi);
 app.use('/api', salesApi);

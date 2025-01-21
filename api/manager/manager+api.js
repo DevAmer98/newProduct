@@ -147,7 +147,6 @@ async function sendWelcomeEmail(email, name, temporaryPassword, role) {
   }
 }
 
-// POST /api/supervisors
 router.post('/managers', async (req, res) => {
   const client = await pool.connect();
   try {
