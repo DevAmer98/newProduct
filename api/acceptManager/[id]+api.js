@@ -108,7 +108,7 @@ router.put('/acceptManager/:id', async (req, res) => {
       return await withTimeout(pool.query(updateOrderQuery, [id]), 10000); // 10-second timeout
     });
 
-    await sendNotificationToDriver(
+    await sendNotificationTosupervisor(
       `تم قبول الطلب ${id} من قبل المدير.`,
     );
 
