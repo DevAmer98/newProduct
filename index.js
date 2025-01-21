@@ -21,6 +21,8 @@ import storekeeperAcceptOrderApi from './api/order/acceptedStorekeeper+api.js';
 import getFcmApi from './api/getFcmToken+api.js';
 import acceptedSupervisorApi from './api/acceptSupervisor/[id]+api.js';
 import acceptedStorekeeperApi from './api/acceptStorekeeper/[id]+api.js';
+import acceptedManagerApi from './api/acceptManager/[id]+api.js';
+
 import deliverdApi from './api/delivered/[id]+api.js';
 import { servePDF } from './api/order/pdf.js'; // Import the servePDF function
 
@@ -51,6 +53,7 @@ app.use('/api/order', storekeeperAcceptOrderApi);
 app.use('/api', getFcmApi);
 app.use('/api', acceptedSupervisorApi);
 app.use('/api', acceptedStorekeeperApi);
+app.use('/api', acceptedManagerApi);
 app.use('/api', deliverdApi);
 
 // New endpoint to generate and serve PDFs
