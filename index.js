@@ -21,7 +21,6 @@ import supervisorAcceptQuotationApi from './api/quotation/acceptedOrders+api.js'
 import storekeeperAcceptQuotationApi from './api/quotation/acceptedStorekeeper+api.js';
 import singleQuotationApi from './api/quotation/[id]+api.js';
 import salesOrderApi from './api/order/salesRep+api.js';
-import salesQuotationApi from './api/order/salesRep+api.js';
 import supervisorAcceptOrderApi from './api/order/acceptedOrders+api.js';
 import storekeeperAcceptOrderApi from './api/order/acceptedStorekeeper+api.js';
 import getFcmApi from './api/getFcmToken+api.js';
