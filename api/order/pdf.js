@@ -9,7 +9,6 @@ const { Pool } = pg; // Destructure Pool from the pg module
 import mammoth from 'mammoth';
 import libre from 'libreoffice-convert'; // For .docx to PDF conversion
 
-
 // Derive __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,14 +17,6 @@ const __dirname = path.dirname(__filename);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
-
-/**
- * Generates a PDF from order data using PDFKit.
- * @param {Object} orderData - The order data to populate the template.
- * @param {string} filePath - The path to save the PDF (optional).
- * @returns {Promise<Buffer>} - Returns the PDF buffer for streaming.
- */
-
 
 /**
  * Generates a PDF from a .docx template using docxtemplater and libreoffice-convert.
@@ -96,6 +87,7 @@ async function convertDocxToPDF(docxBuffer) {
     });
   });
 }
+
 /**
  * Fetches order data from the database.
  * @param {string} orderId - The ID of the order.
@@ -125,20 +117,13 @@ async function fetchOrderDataFromDatabase(orderId) {
     `;
     const productsResult = await pool.query(productsQuery, [orderId]);
 
-    // Fetch sales representative
-    const salesRepQuery = `
-      SELECT name, email, phone FROM salesreps
-      WHERE id = $1
-    `;
-    const salesRepResult = await pool.query(salesRepQuery, [orderResult.rows[0].sales_rep_id]);
-
-    // Flatten salesRep fields into the root of the orderData object
+    // Return order data without salesRep fields
     const orderData = {
       ...orderResult.rows[0],
       products: productsResult.rows,
-      ...(salesRepResult.rows[0] || {}), // Flatten salesRep fields
     };
 
+    console.log('Order Data:', orderData); // Log the order data
     return orderData;
   } catch (error) {
     console.error('Error fetching order data:', error);
@@ -148,19 +133,29 @@ async function fetchOrderDataFromDatabase(orderId) {
 
 /**
  * Serves the PDF for a given order ID.
- * @param {string} orderId - The ID of the order.
+ * @param {Object} req - The Express request object.
  * @param {Object} res - The Express response object.
  */
-export async function servePDF(orderId, res) {
+export async function servePDF(req, res) {
   try {
+    const { orderId, salesRep } = req.body;
+
     // Fetch order data from the database
     const orderData = await fetchOrderDataFromDatabase(orderId);
-    console.log('Order Data:', orderData); // Log the orderData object
 
+    // Combine orderData and salesRep data
+    const combinedData = {
+      ...orderData,
+      name: salesRep?.name || 'N/A', // Default value if missing
+      email: salesRep?.email || 'N/A', // Default value if missing
+      phone: salesRep?.phone || 'N/A', // Default value if missing
+    };
+
+    console.log('Combined Data:', combinedData); // Log the combined data
 
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
-    const pdfBuffer = await generatePDF(orderData, templatePath);
+    const pdfBuffer = await generatePDF(combinedData, templatePath);
 
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
