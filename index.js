@@ -14,6 +14,11 @@ import singleDriverApi from './api/driver/[id]+api.js';
 import clientApi from './api/client/create+api.js';
 import singleClientApi from './api/client/[id]+api.js';
 import orderApi from './api/order/create+api.js';
+import quotationApi from './api/quotation/create+api.js';
+import singleOrderApi from './api/order/[id]+api.js';
+import salesQuotationApi from './api/quotation/salesRep+api.js';
+import supervisorAcceptQuotationApi from './api/quotation/acceptedOrders+api.js';
+import storekeeperAcceptQuotationApi from './api/quotation/acceptedStorekeeper+api.js';
 import singleOrderApi from './api/order/[id]+api.js';
 import salesOrderApi from './api/order/salesRep+api.js';
 import supervisorAcceptOrderApi from './api/order/acceptedOrders+api.js';
@@ -53,6 +58,9 @@ app.use('/api', singleOrderApi);
 app.use('/api/order', salesOrderApi);
 app.use('/api/order', supervisorAcceptOrderApi); // Mount under /api/order
 app.use('/api/order', storekeeperAcceptOrderApi);
+app.use('/api/quotation', salesQuotationApi);
+app.use('/api/quotation', supervisorAcceptQuotationApi); // Mount under /api/order
+app.use('/api/quotation', storekeeperAcceptQuotationApi);
 app.use('/api', getFcmApi);
 app.use('/api', acceptedSupervisorApi);
 app.use('/api', acceptedStorekeeperApi);
