@@ -55,7 +55,7 @@ app.use('/api', clientApi);
 app.use('/api', singleClientApi);
 app.use('/api', orderApi);
 app.use('/api', singleOrderApi);
-app.use('/api', singleOrderApi);
+app.use('/api', singleQuotationApi);
 app.use('/api', quotationApi);
 app.use('/api/order', supervisorAcceptOrderApi); // Mount under /api/order
 app.use('/api/order', storekeeperAcceptOrderApi);

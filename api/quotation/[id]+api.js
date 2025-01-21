@@ -49,7 +49,6 @@ async function testConnection() {
 
 testConnection();
 
-// GET /api/orders/:id
 router.get('/quotations/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -98,7 +97,6 @@ router.get('/quotations/:id', async (req, res) => {
   }
 });
 
-// PUT /api/orders/:id
 router.put('/quotations/:id', async (req, res) => {
   const { id } = req.params;
   const body = req.body;
