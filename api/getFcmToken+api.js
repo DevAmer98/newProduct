@@ -59,6 +59,9 @@ router.post('/fcm-token', async (req, res) => {
     // Update the FCM token in the database based on the role
     let query;
     switch (role) {
+      case 'manager':
+        query = 'UPDATE Managers SET fcm_token = $1 WHERE email = $2';
+        break;
       case 'supervisor':
         query = 'UPDATE Supervisors SET fcm_token = $1 WHERE email = $2';
         break;
