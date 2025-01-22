@@ -340,13 +340,13 @@ router.post('/quotations', async (req, res) => {
         }
 
         // Calculate VAT and subtotal for the current product row
-        const vat = numericPrice * 0.15; // VAT is 15% of the product price
-        const subtotal = numericPrice + vat; // Subtotal is price + VAT
+        const vat = numericPrice * 0.15; // VAT is 15% of the unit price
+        const subtotal = (numericPrice + vat) * quantity; // Subtotal is (price + VAT) * quantity
 
         // Update totals for the entire quotation
-        totalPrice += numericPrice * quantity;
-        totalVat += vat * quantity;
-        totalSubtotal += subtotal * quantity;
+        totalPrice += numericPrice * quantity; // Total price is sum of (price * quantity)
+        totalVat += vat * quantity; // Total VAT is sum of (VAT * quantity)
+        totalSubtotal += subtotal; // Total subtotal is sum of all subtotals
 
         // Insert the product row with VAT and subtotal
         await client.query(
@@ -384,8 +384,6 @@ router.post('/quotations', async (req, res) => {
     client.release(); // Release the client back to the pool
   }
 });
-
-
 
 router.get('/quotations', async (req, res) => {
   const client = await pool.connect();
