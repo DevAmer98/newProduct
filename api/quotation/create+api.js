@@ -385,6 +385,8 @@ router.post('/quotations', async (req, res) => {
   }
 });
 
+
+
 router.get('/quotations', async (req, res) => {
   const client = await pool.connect();
   try {
