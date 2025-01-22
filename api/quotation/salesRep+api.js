@@ -267,7 +267,6 @@ export default router;
 
 */
 
-
 import express from 'express';
 import moment from 'moment-timezone'; // Ensure moment-timezone is installed
 import admin from '../../firebase-init.js';
@@ -317,7 +316,7 @@ const generateCustomId = async (client) => {
     [`NPQ-${year}-%`]
   );
   const lastId = result.rows[0].last_id || 0;
-  const newId = `NPO-${year}-${String(lastId + 1).padStart(5, '0')}`;
+  const newId = `NPQ-${year}-${String(lastId + 1).padStart(5, '0')}`;
   return newId;
 };
 
@@ -362,7 +361,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
   }
 }
 
-// POST endpoint to create an order
+// POST endpoint to create a quotation
 router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
