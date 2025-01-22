@@ -108,7 +108,7 @@ async function fetchOrderDataFromDatabase(quotationId) {
       SELECT q.*, c.company_name, c.client_name, c.phone_number, 
              c.tax_number, c.branch_number, c.latitude, c.longitude, 
              c.street, c.city, c.region, q.storekeeper_notes
-      FROM orders q
+      FROM quotations q
       JOIN clients c ON q.client_id = c.id
       WHERE q.id = $1
     `;
