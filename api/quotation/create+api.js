@@ -386,7 +386,7 @@ router.post('/quotations', async (req, res) => {
 });
 
 // GET endpoint to fetch a specific quotation by ID
-router.get('/quotations/:id', async (req, res) => {
+router.get('/quotations', async (req, res) => {
   const { id } = req.params;
 
   if (!id) {
