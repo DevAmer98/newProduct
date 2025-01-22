@@ -262,3 +262,5 @@ router.get('/quotations/salesRep', async (req, res) => {
     client.release();
   }
 });
+
+export default router;
