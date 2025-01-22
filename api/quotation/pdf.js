@@ -103,6 +103,8 @@ async function convertDocxToPDF(docxBuffer) {
  */
 async function fetchOrderDataFromDatabase(quotationId) {
   try {
+    console.log(`Fetching data for quotation ID: ${quotationId}`); // Log the quotation ID
+
     // Fetch order details
     const orderQuery = `
       SELECT q.*, c.company_name, c.client_name, c.phone_number, 
@@ -113,6 +115,7 @@ async function fetchOrderDataFromDatabase(quotationId) {
       WHERE q.id = $1
     `;
     const orderResult = await pool.query(orderQuery, [quotationId]);
+    console.log('Order Query Result:', orderResult.rows); // Log the query result
 
     if (orderResult.rows.length === 0) {
       throw new Error('Quotation not found');
@@ -124,6 +127,7 @@ async function fetchOrderDataFromDatabase(quotationId) {
       WHERE quotation_id = $1
     `;
     const productsResult = await pool.query(productsQuery, [quotationId]);
+    console.log('Products Query Result:', productsResult.rows); // Log the query result
 
     // Add product numbers dynamically
     const productsWithNumbers = productsResult.rows.map((product, index) => ({
@@ -137,8 +141,7 @@ async function fetchOrderDataFromDatabase(quotationId) {
       WHERE id = $1
     `;
     const salesRepResult = await pool.query(salesRepQuery, [orderResult.rows[0].sales_rep_id]);
-
-    console.log('Sales Rep Query Result:', salesRepResult.rows); // Log the sales rep query result
+    console.log('Sales Rep Query Result:', salesRepResult.rows); // Log the query result
 
     // Flatten salesRep fields into the root of the orderData object
     const orderData = {
