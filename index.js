@@ -75,8 +75,8 @@ app.use('/api', deliverdApi);
 
 // New endpoint to generate and serve PDFs
 app.get('/api/quotation/pdf/:quotationId', async (req, res) => {
-  const { quotationid } = req.params;
-  await servePDF(quotationid, res);
+  const { quotationId } = req.params;
+  await servePDF(quotationId, res);
 });
 
 // Error-handling middleware
