@@ -429,11 +429,11 @@ router.get('/quotations', async (req, res) => {
       return await client.query(baseQuery, baseQueryParams);
     });
 
-    const quotations = quotationsResult.rows;
-    const totalCount = quotations.length;
+    const orders = quotationsResult.rows;
+    const totalCount = orders.length;
 
     return res.status(200).json({
-      quotations,
+      orders,
       totalCount,
       currentPage: page,
       totalPages: Math.ceil(totalCount / limit),
