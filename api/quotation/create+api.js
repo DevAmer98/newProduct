@@ -269,7 +269,7 @@ const generateCustomId = async (client) => {
   return newId;
 };
 
-/// POST endpoint to create a quotation
+// POST endpoint to create a quotation
 router.post('/quotations', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -322,28 +322,27 @@ router.post('/quotations', async (req, res) => {
       let totalPrice = 0;
       let totalVat = 0;
       let totalSubtotal = 0;
-      const subtotalPerProduct = []; // Array to store subtotal for each product
 
       // Insert products and calculate VAT and subtotal for each row
       for (const product of products) {
         const { section, type, description, quantity, price } = product;
-      
+
         // Validate product fields
         if (!section || !type || !quantity || !price) {
           await client.query('ROLLBACK'); // Rollback if product validation fails
           return res.status(400).json({ error: 'Missing product details or price' });
         }
-      
+
         const numericPrice = parseFloat(price);
         if (isNaN(numericPrice)) {
           await client.query('ROLLBACK'); // Rollback if price is invalid
           return res.status(400).json({ error: 'Invalid price format' });
         }
-      
+
         // Calculate VAT and subtotal for the current product row
         const vat = numericPrice * 0.15; // VAT is 15% of the unit price
         const subtotal = (numericPrice + vat) * quantity; // Subtotal is (price + VAT) * quantity
-      
+
         // Debugging: Log the values
         console.log({
           productId: product.id,
@@ -352,12 +351,12 @@ router.post('/quotations', async (req, res) => {
           quantity,
           subtotal,
         });
-      
+
         // Update totals for the entire quotation
         totalPrice += numericPrice * quantity; // Total price is sum of (price * quantity)
         totalVat += vat * quantity; // Total VAT is sum of (VAT * quantity)
         totalSubtotal += subtotal; // Total subtotal is sum of all subtotals
-      
+
         // Insert the product row with VAT and subtotal
         await client.query(
           `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price, vat, subtotal)
@@ -365,7 +364,6 @@ router.post('/quotations', async (req, res) => {
           [quotationId, section, type, description, quantity, numericPrice, vat, subtotal]
         );
       }
-      
 
       // Update the quotation with the total price, total VAT, and total subtotal
       await client.query(
@@ -385,7 +383,6 @@ router.post('/quotations', async (req, res) => {
         totalPrice,
         totalVat,
         totalSubtotal,
-        subtotalPerProduct, // Include subtotal for each product in the response
       });
     });
   } catch (error) {
