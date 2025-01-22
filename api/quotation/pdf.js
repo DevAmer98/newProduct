@@ -98,10 +98,10 @@ async function convertDocxToPDF(docxBuffer) {
 }
 /**
  * Fetches order data from the database.
- * @param {string} orderId - The ID of the order.
+ * @param {string} quotationid - The ID of the order.
  * @returns {Promise<Object>} - The order data.
  */
-async function fetchOrderDataFromDatabase(orderId) {
+async function fetchOrderDataFromDatabase(quotationid) {
   try {
     // Fetch order details
     const orderQuery = `
@@ -112,7 +112,7 @@ async function fetchOrderDataFromDatabase(orderId) {
       JOIN clients c ON q.client_id = c.id
       WHERE q.id = $1
     `;
-    const orderResult = await pool.query(orderQuery, [orderId]);
+    const orderResult = await pool.query(orderQuery, [quotationid]);
 
     if (orderResult.rows.length === 0) {
       throw new Error('Quotation not found');
@@ -123,7 +123,7 @@ async function fetchOrderDataFromDatabase(orderId) {
       SELECT * FROM quotation_products
       WHERE quotation_id = $1
     `;
-    const productsResult = await pool.query(productsQuery, [orderId]);
+    const productsResult = await pool.query(productsQuery, [quotationid]);
 
     // Add product numbers dynamically
     const productsWithNumbers = productsResult.rows.map((product, index) => ({
