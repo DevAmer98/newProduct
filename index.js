@@ -20,7 +20,7 @@ import salesQuotationApi from './api/quotation/salesRep+api.js';
 import supervisorAcceptQuotationApi from './api/quotation/acceptedOrders+api.js';
 import storekeeperAcceptQuotationApi from './api/quotation/acceptedStorekeeper+api.js';
 import singleQuotationApi from './api/quotation/[id]+api.js';
-import salesOrderApi from './api/order/salesRep+api.js';
+import salesOrderApi from './api/order/salesRep+api.js'; 
 import supervisorAcceptOrderApi from './api/order/acceptedOrders+api.js';
 import storekeeperAcceptOrderApi from './api/order/acceptedStorekeeper+api.js';
 import getFcmApi from './api/getFcmToken+api.js';
@@ -74,9 +74,9 @@ app.use('/api', acceptedManagerQoutationApi);
 app.use('/api', deliverdApi);
 
 // New endpoint to generate and serve PDFs
-app.get('/api/order/pdf/:orderId', async (req, res) => {
-  const { orderId } = req.params;
-  await servePDF(orderId, res);
+app.get('/api/quotation/pdf/:quotationId', async (req, res) => {
+  const { quotationid } = req.params;
+  await servePDF(quotationid, res);
 });
 
 // Error-handling middleware
