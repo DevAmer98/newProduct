@@ -77,56 +77,113 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
     client.release();
   }
 }
-
 // POST endpoint to create an order
 router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
     await executeWithRetry(async () => {
-      await client.query('BEGIN');
-      const { client_id, username, delivery_date, delivery_type, products, notes, status = 'not Delivered' } = req.body;
+      await client.query('BEGIN'); // Start transaction
 
-      if (!client_id || !delivery_date || !delivery_type || !products || products.length === 0) {
+      const {
+        client_id,
+        username,
+        delivery_date,
+        delivery_type,
+        products,
+        notes,
+        status = 'not Delivered',
+      } = req.body;
+
+      // Validate required fields
+      if (!client_id || !username || !delivery_date || !delivery_type || !products || products.length === 0) {
+        await client.query('ROLLBACK'); // Rollback if validation fails
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      let formattedDate = moment(delivery_date).tz('UTC').format('YYYY-MM-DD HH:mm:ss');
+      // Format delivery date
+      const formattedDate = moment(delivery_date).tz('UTC').format('YYYY-MM-DD HH:mm:ss');
+
+      // Insert quotation
       const quotationResult = await withTimeout(
         client.query(
-          `INSERT INTO quotations (client_id, username, delivery_date, delivery_type, notes, status)
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-          [client_id, username, formattedDate, delivery_type, notes || null, status]
+          `INSERT INTO quotations (client_id, username, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+          [client_id, username, formattedDate, delivery_type, notes || null, status, 0, 0, 0]
         ),
         10000 // 10-second timeout
       );
+
       const quotationId = quotationResult.rows[0].id;
- 
       let totalPrice = 0;
+      let totalVat = 0;
+      let totalSubtotal = 0;
+
+      // Insert products and calculate VAT and subtotal for each row
       for (const product of products) {
-        totalPrice += parseFloat(product.price);
+        const { section, type, description, quantity, price } = product;
+
+        // Validate product fields
+        if (!section || !type || !quantity || !price) {
+          await client.query('ROLLBACK'); // Rollback if product validation fails
+          return res.status(400).json({ error: 'Missing product details or price' });
+        }
+
+        const numericPrice = parseFloat(price);
+        if (isNaN(numericPrice)) {
+          await client.query('ROLLBACK'); // Rollback if price is invalid
+          return res.status(400).json({ error: 'Invalid price format' });
+        }
+
+        // Calculate VAT and subtotal for the current product row
+        const vat = numericPrice * 0.15; // VAT is 15% of the product price
+        const subtotal = numericPrice + vat; // Subtotal is price + VAT
+
+        // Update totals for the entire quotation
+        totalPrice += numericPrice * quantity;
+        totalVat += vat * quantity;
+        totalSubtotal += subtotal * quantity;
+
+        // Insert the product row with VAT and subtotal
         await client.query(
-          `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [quotationId, product.section, product.type, product.description, product.quantity, parseFloat(product.price)]
+          `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price, vat, subtotal)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [quotationId, section, type, description, quantity, numericPrice, vat, subtotal]
         );
       }
 
-      await client.query(`UPDATE quotations SET total_price = $1 WHERE id = $2`, [totalPrice, quotationId]);
-      await client.query('COMMIT');
+      // Update the quotation with the total price, total VAT, and total subtotal
+      await client.query(
+        `UPDATE quotations 
+         SET total_price = $1, 
+             total_vat = $2, 
+             total_subtotal = $3 
+         WHERE id = $4`,
+        [totalPrice, totalVat, totalSubtotal, quotationId]
+      );
+
+      await client.query('COMMIT'); // Commit transaction
 
       // Send notifications to supervisors
-      await sendNotificationToSupervisor(`تم إنشاء طلب جديد بالمعرف ${quotationId} وينتظر موافقتك.`, 'إشعار طلب جديد');
+      await sendNotificationToSupervisor(`تم إنشاء عرض سعر جديد بالمعرف ${quotationId} وينتظر موافقتك.`, 'إشعار عرض سعر جديد');
 
-      return res.status(201).json({ quotationId, status: 'success', totalPrice });
+      return res.status(201).json({
+        quotationId,
+        status: 'success',
+        totalPrice,
+        totalVat,
+        totalSubtotal,
+      });
     });
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK'); // Rollback on any error
     console.error('Error creating quotation:', error);
     return res.status(500).json({ error: error.message || 'Error creating quotation' });
   } finally {
-    client.release();
+    client.release(); // Release the client back to the pool
   }
 });
+
+
 
 // GET endpoint to fetch orders
 router.get('/quotations/salesRep', async (req, res) => {
@@ -155,7 +212,9 @@ router.get('/quotations/salesRep', async (req, res) => {
         quotations.status,
         quotations.storekeeperaccept,
         quotations.actual_delivery_date,
-        quotations.total_price 
+        quotations.total_price,
+        quotations.total_vat,
+        quotations.total_subtotal
       FROM quotations
       JOIN clients ON quotations.client_id = clients.id
       WHERE quotations.username = $4 AND 
@@ -203,5 +262,3 @@ router.get('/quotations/salesRep', async (req, res) => {
     client.release();
   }
 });
-
-export default router;
