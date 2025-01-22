@@ -159,13 +159,13 @@ async function fetchOrderDataFromDatabase(quotationId) {
 }
 /**
  * Serves the PDF for a given order ID.
- * @param {string} quotationid - The ID of the order.
+ * @param {string} quotationId - The ID of the order.
  * @param {Object} res - The Express response object.
  */
-export async function servePDF(quotationid, res) {
+export async function servePDF(quotationId, res) {
   try {
     // Fetch order data from the database
-    const orderData = await fetchOrderDataFromDatabase(quotationid);
+    const orderData = await fetchOrderDataFromDatabase(quotationId);
     console.log('Order Data:', orderData); // Log the orderData object
 
 
@@ -175,7 +175,7 @@ export async function servePDF(quotationid, res) {
 
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=order_${quotationid}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=order_${quotationId}.pdf`);
     res.setHeader('Content-Length', pdfBuffer.length);
 
     // Send the PDF as a response
