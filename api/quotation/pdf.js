@@ -133,6 +133,8 @@ async function fetchOrderDataFromDatabase(quotationId) {
     const productsWithNumbers = productsResult.rows.map((product, index) => ({
       ...product,
       productNumber: String(index + 1).padStart(3, '0'), // Format as 001, 002, etc.
+      vat: vat.toFixed(2), // Format VAT to 2 decimal places
+      subtotal: subtotal.toFixed(2), // Format subtotal to 2 decimal places
     }));
 
     // Fetch sales representative
@@ -178,7 +180,7 @@ export async function servePDF(quotationId, res) {
 
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=order_${quotationId}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=quotation_${quotationId}.pdf`);
     res.setHeader('Content-Length', pdfBuffer.length);
 
     // Send the PDF as a response
