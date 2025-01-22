@@ -129,19 +129,11 @@ async function fetchOrderDataFromDatabase(quotationId) {
     const productsResult = await pool.query(productsQuery, [quotationId]);
     console.log('Products Query Result:', productsResult.rows); // Log the query result
 
-    // Add product numbers dynamically and calculate VAT and subtotal
-    const productsWithNumbers = productsResult.rows.map((product, index) => {
-      const price = parseFloat(product.price) || 0; // Ensure price is a number
-      const vat = price * 0.15; // VAT is 15% of the price
-      const subtotal = price + vat; // Subtotal is price + VAT
-
-      return {
-        ...product,
-        productNumber: String(index + 1).padStart(3, '0'), // Format as 001, 002, etc.
-        vat: vat.toFixed(2), // Format VAT to 2 decimal places
-        subtotal: subtotal.toFixed(2), // Format subtotal to 2 decimal places
-      };
-    });
+    // Add product numbers dynamically (no need to recalculate VAT and subtotal)
+    const productsWithNumbers = productsResult.rows.map((product, index) => ({
+      ...product,
+      productNumber: String(index + 1).padStart(3, '0'), // Format as 001, 002, etc.
+    }));
 
     // Fetch sales representative
     const salesRepQuery = `
