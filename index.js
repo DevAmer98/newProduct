@@ -32,7 +32,6 @@ import acceptedStorekeeperQoutationApi from './api/acceptStorekeeperQuotation/[i
 import acceptedManagerQoutationApi from './api/acceptManagerQuotation/[id]+api.js';
 
 import deliverdApi from './api/delivered/[id]+api.js';
-import { servePDF } from './api/order/pdf.js'; // Import the servePDF function
 import { servePDF } from './api/quotation/pdf.js'; // Import the servePDF function
 
 
