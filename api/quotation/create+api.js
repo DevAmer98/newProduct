@@ -270,6 +270,7 @@ const generateCustomId = async (client) => {
 };
 
 // POST endpoint to create a quotation
+// POST endpoint to create a quotation
 router.post('/quotations', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -287,6 +288,9 @@ router.post('/quotations', async (req, res) => {
         supervisoraccept = 'pending',
         manageraccept = 'pending',
       } = req.body;
+
+      // Debugging: Log the request body
+      console.log('Request Body:', req.body);
 
       // Validate required fields
       if (!client_id || !delivery_date || !delivery_type || !products || products.length === 0) {
@@ -393,7 +397,6 @@ router.post('/quotations', async (req, res) => {
     client.release(); // Release the client back to the pool
   }
 });
-
 router.get('/quotations', async (req, res) => {
   const client = await pool.connect();
   try {
