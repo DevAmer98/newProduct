@@ -343,24 +343,25 @@ router.post('/quotations', async (req, res) => {
           return res.status(400).json({ error: 'Invalid price format' });
         }
 
-        // Calculate VAT and subtotal for the current product row
-        const vat = numericPrice * 0.15; // VAT is 15% of the unit price
-        const subtotal = (numericPrice + vat) * quantity; // Subtotal is (price + VAT) * quantity
+       // Calculate VAT and subtotal for the current product row
+            const totalPriceForProduct = numericPrice * quantity; // Total price for the quantity
+            const vat = totalPriceForProduct * 0.15; // VAT is 15% of the total price for the quantity
+            const subtotal = totalPriceForProduct + vat; // Subtotal is total price + VAT
 
-        // Debugging: Log the values
-        console.log({
-          productId: product.id,
-          numericPrice,
-          vat,
-          quantity,
-          subtotal,
-        });
+            // Debugging: Log the values
+            console.log({
+              productId: product.id,
+              numericPrice,
+              quantity,
+              totalPriceForProduct,
+              vat,
+              subtotal,
+            });
 
-        // Update totals for the entire quotation
-        totalPrice += numericPrice * quantity; // Total price is sum of (price * quantity)
-        totalVat += vat * quantity; // Total VAT is sum of (VAT * quantity)
-        totalSubtotal += subtotal; // Total subtotal is sum of all subtotals
-
+            // Update totals for the entire quotation
+            totalPrice += totalPriceForProduct; // Total price is sum of (price * quantity)
+            totalVat += vat; // Total VAT is sum of (VAT * quantity)
+            totalSubtotal += subtotal; // Total subtotal is sum of all subtotals
         // Insert the product row with VAT and subtotal
         await client.query(
           `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price, vat, subtotal)
