@@ -385,71 +385,64 @@ router.post('/quotations', async (req, res) => {
   }
 });
 
-// GET endpoint to fetch a specific quotation by ID
+
+
 router.get('/quotations', async (req, res) => {
-  const { id } = req.params;
-
-  if (!id) {
-    return res.status(400).json({ error: 'Missing quotation ID' });
-  }
-
   const client = await pool.connect();
   try {
-    // Fetch quotation details
-    const quotationQuery = `
-      SELECT q.*, c.company_name, c.client_name, c.phone_number, 
-             c.tax_number, c.branch_number, c.latitude, c.longitude, 
-             c.street, c.city, c.region, q.storekeeper_notes
-      FROM quotations q
-      JOIN clients c ON q.client_id = c.id
-      WHERE q.id = $1
-    `;
+    const limit = Math.min(parseInt(req.query.limit || '10', 10), 50);
+    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+    const query = req.query.query || '';
+    const status = req.query.status || 'all';
+    const offset = (page - 1) * limit;
 
-    const quotationResult = await executeWithRetry(async () => {
-      return await withTimeout(client.query(quotationQuery, [id]), 10000); // 10-second timeout
-    });
+    let filterCondition = 'TRUE';
+    const baseQueryParams = [limit, offset, `%${query}%`];
 
-    if (quotationResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Quotation not found' });
+    if (status !== 'all') {
+      filterCondition = `(quotations.status = $4 OR quotations.supervisoraccept = $4)`;
+      baseQueryParams.push(status);
     }
 
-    // Fetch products associated with the quotation
-    const productsQuery = `
-      SELECT * FROM quotation_products
-      WHERE quotation_id = $1
+    const baseQuery = `
+      SELECT 
+        quotations.*, 
+        clients.client_name AS client_name,
+        clients.phone_number AS client_phone,
+        clients.company_name AS client_company,
+        clients.branch_number AS client_branch,
+        clients.tax_number AS client_tax,
+        clients.latitude AS client_latitude,
+        clients.longitude AS client_longitude,
+        clients.street AS client_street,
+        clients.city AS client_city,
+        clients.region AS client_region
+      FROM quotations
+      JOIN clients ON quotations.client_id = clients.id
+      WHERE (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
+      AND ${filterCondition}
+      ORDER BY quotations.delivery_date DESC
+      LIMIT $1 OFFSET $2
     `;
-    const productsResult = await executeWithRetry(async () => {
-      return await withTimeout(client.query(productsQuery, [id]), 10000); // 10-second timeout
+
+    const quotationsResult = await executeWithRetry(async () => {
+      return await client.query(baseQuery, baseQueryParams);
     });
 
-    // Combine quotation and product data
-    const quotationData = quotationResult.rows[0];
-    const productsData = productsResult.rows;
+    const quotations = quotationsResult.rows;
+    const totalCount = quotations.length;
 
-    // Calculate totals from products (optional, since they are already stored in the quotation)
-    const calculatedTotals = productsData.reduce(
-      (totals, product) => {
-        totals.totalPrice += product.price * product.quantity;
-        totals.totalVat += product.vat * product.quantity;
-        totals.totalSubtotal += product.subtotal * product.quantity;
-        return totals;
-      },
-      { totalPrice: 0, totalVat: 0, totalSubtotal: 0 }
-    );
-
-    // Response data
-    const responseData = {
-      ...quotationData,
-      products: productsData,
-      calculatedTotals, // Optional: Include calculated totals for verification
-    };
-
-    return res.status(200).json(responseData);
+    return res.status(200).json({
+      quotations,
+      totalCount,
+      currentPage: page,
+      totalPages: Math.ceil(totalCount / limit),
+    });
   } catch (error) {
-    console.error('Database error:', error);
+    console.error('Error fetching quotations:', error);
     return res.status(500).json({
-      error: 'Internal Server Error',
-      details: error.message,
+      error: error.message || 'Error fetching quotations',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   } finally {
     client.release();
