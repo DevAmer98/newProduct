@@ -9,7 +9,6 @@ const { Pool } = pg; // Destructure Pool from the pg module
 import mammoth from 'mammoth';
 import libre from 'libreoffice-convert'; // For .docx to PDF conversion
 
-
 // Derive __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,14 +17,6 @@ const __dirname = path.dirname(__filename);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
-
-/**
- * Generates a PDF from order data using PDFKit.
- * @param {Object} orderData - The order data to populate the template.
- * @param {string} filePath - The path to save the PDF (optional).
- * @returns {Promise<Buffer>} - Returns the PDF buffer for streaming.
- */
-
 
 /**
  * Generates a PDF from a .docx template using docxtemplater and libreoffice-convert.
@@ -79,6 +70,7 @@ export async function generatePDF(orderData, templatePath, filePath = null) {
     throw new Error(`Failed to generate PDF: ${error.message}`);
   }
 }
+
 /**
  * Converts a .docx buffer to a PDF buffer using libreoffice-convert.
  * @param {Buffer} docxBuffer - The .docx file as a buffer.
@@ -95,6 +87,7 @@ async function convertDocxToPDF(docxBuffer) {
     });
   });
 }
+
 /**
  * Fetches order data from the database.
  * @param {string} quotationId - The ID of the order.
@@ -159,6 +152,7 @@ async function fetchOrderDataFromDatabase(quotationId) {
     throw new Error('Failed to fetch quotation data');
   }
 }
+
 /**
  * Serves the PDF for a given order ID.
  * @param {string} quotationId - The ID of the order.
@@ -169,7 +163,6 @@ export async function servePDF(quotationId, res) {
     // Fetch order data from the database
     const orderData = await fetchOrderDataFromDatabase(quotationId);
     console.log('Quotation Data:', orderData); // Log the orderData object
-
 
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
