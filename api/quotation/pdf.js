@@ -100,9 +100,9 @@ async function convertDocxToPDF(docxBuffer) {
  * @param {string} quotationId - The ID of the order.
  * @returns {Promise<Object>} - The order data.
  */
-async function fetchOrderDataFromDatabase(quotationId) {
+async function fetchOrderDataFromDatabase(quotationId, salesRep) {
   try {
-    console.log(`Fetching data for quotation ID: ${quotationId}`); // Log the quotation ID
+    console.log(`Fetching data for quotation ID: ${quotationId}`);
 
     // Fetch order details
     const orderQuery = `
@@ -114,7 +114,7 @@ async function fetchOrderDataFromDatabase(quotationId) {
       WHERE q.id = $1
     `;
     const orderResult = await pool.query(orderQuery, [quotationId]);
-    console.log('Order Query Result:', orderResult.rows); // Log the query result
+    console.log('Order Query Result:', orderResult.rows);
 
     if (orderResult.rows.length === 0) {
       throw new Error('Quotation not found');
@@ -126,29 +126,23 @@ async function fetchOrderDataFromDatabase(quotationId) {
       WHERE quotation_id = $1
     `;
     const productsResult = await pool.query(productsQuery, [quotationId]);
-    console.log('Products Query Result:', productsResult.rows); // Log the query result
+    console.log('Products Query Result:', productsResult.rows);
 
-    // Add product numbers dynamically (no need to recalculate VAT and subtotal)
+    // Add product numbers dynamically
     const productsWithNumbers = productsResult.rows.map((product, index) => ({
       ...product,
       productNumber: String(index + 1).padStart(3, '0'), // Format as 001, 002, etc.
     }));
 
-    // Fetch sales representative
-    const salesRepQuery = `
-      SELECT name, email, phone FROM salesreps
-      WHERE id = $1
-    `;
-    const salesRepResult = await pool.query(salesRepQuery, [orderResult.rows[0].sales_rep_id]);
-    console.log('Sales Rep Query Result:', salesRepResult.rows); // Log the query result
-
-    // Flatten salesRep fields into the root of the orderData object
+    // Include salesRep data in the orderData object
     const orderData = {
       ...orderResult.rows[0],
-      products: productsWithNumbers, // Use products with dynamically generated numbers
-      name: salesRepResult.rows[0]?.name || 'N/A', // Default value if missing
-      email: salesRepResult.rows[0]?.email || 'N/A', // Default value if missing
-      phone: salesRepResult.rows[0]?.phone || 'N/A', // Default value if missing
+      products: productsWithNumbers,
+      salesRep: {
+        name: salesRep?.name || 'N/A',
+        email: salesRep?.email || 'N/A',
+        phone: salesRep?.phone || 'N/A',
+      },
     };
 
     console.log('Final Quotation Data:', orderData); // Log the final orderData object
@@ -164,12 +158,11 @@ async function fetchOrderDataFromDatabase(quotationId) {
  * @param {string} quotationId - The ID of the order.
  * @param {Object} res - The Express response object.
  */
-export async function servePDF(quotationId, res) {
+export async function servePDF(quotationId, res, salesRep) {
   try {
     // Fetch order data from the database
-    const orderData = await fetchOrderDataFromDatabase(quotationId);
+    const orderData = await fetchOrderDataFromDatabase(quotationId, salesRep);
     console.log('Quotation Data:', orderData); // Log the orderData object
-
 
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
