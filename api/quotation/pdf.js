@@ -9,6 +9,7 @@ const { Pool } = pg; // Destructure Pool from the pg module
 import mammoth from 'mammoth';
 import libre from 'libreoffice-convert'; // For .docx to PDF conversion
 
+
 // Derive __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +18,14 @@ const __dirname = path.dirname(__filename);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+/**
+ * Generates a PDF from order data using PDFKit.
+ * @param {Object} orderData - The order data to populate the template.
+ * @param {string} filePath - The path to save the PDF (optional).
+ * @returns {Promise<Buffer>} - Returns the PDF buffer for streaming.
+ */
+
 
 /**
  * Generates a PDF from a .docx template using docxtemplater and libreoffice-convert.
@@ -70,7 +79,6 @@ export async function generatePDF(orderData, templatePath, filePath = null) {
     throw new Error(`Failed to generate PDF: ${error.message}`);
   }
 }
-
 /**
  * Converts a .docx buffer to a PDF buffer using libreoffice-convert.
  * @param {Buffer} docxBuffer - The .docx file as a buffer.
@@ -87,7 +95,6 @@ async function convertDocxToPDF(docxBuffer) {
     });
   });
 }
-
 /**
  * Fetches order data from the database.
  * @param {string} quotationId - The ID of the order.
@@ -152,17 +159,17 @@ async function fetchOrderDataFromDatabase(quotationId) {
     throw new Error('Failed to fetch quotation data');
   }
 }
-
 /**
  * Serves the PDF for a given order ID.
  * @param {string} quotationId - The ID of the order.
  * @param {Object} res - The Express response object.
- */export async function servePDF(req, res) {
+ */
+export async function servePDF(quotationId, res) {
   try {
-    const { id } = req.params;
-    const orderData = req.body; // Get orderData from the request body
+    // Fetch order data from the database
+    const orderData = await fetchOrderDataFromDatabase(quotationId);
+    console.log('Quotation Data:', orderData); // Log the orderData object
 
-    console.log('Received Order Data:', orderData); // Log the orderData object
 
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
@@ -170,7 +177,7 @@ async function fetchOrderDataFromDatabase(quotationId) {
 
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=quotation_${id}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=quotation_${quotationId}.pdf`);
     res.setHeader('Content-Length', pdfBuffer.length);
 
     // Send the PDF as a response
