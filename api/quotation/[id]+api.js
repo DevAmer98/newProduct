@@ -48,6 +48,8 @@ async function testConnection() {
 }
 
 testConnection();
+
+
 router.get('/quotations/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -58,13 +60,16 @@ router.get('/quotations/:id', async (req, res) => {
   try {
     // Fetch quotation details
     const quotationQuery = `
-      SELECT q.*, c.company_name, c.client_name, c.phone_number, 
-             c.tax_number, c.branch_number, c.latitude, c.longitude, 
-             c.street, c.city, c.region, q.storekeeper_notes
-      FROM quotations q
-      JOIN clients c ON q.client_id = c.id
-      WHERE q.id = $1
-    `;
+    SELECT q.*, c.company_name, c.client_name, c.phone_number, 
+           c.tax_number, c.branch_number, c.latitude, c.longitude, 
+           c.street, c.city, c.region, q.storekeeper_notes,
+           s.name AS supervisor_name -- Include supervisor's name
+    FROM quotations q
+    JOIN clients c ON q.client_id = c.id
+    LEFT JOIN supervisors s ON q.supervisor_id = s.id -- Join with supervisors table
+    WHERE q.id = $1
+  `;
+
 
     const quotationResult = await executeWithRetry(async () => {
       return await withTimeout(pool.query(quotationQuery, [id]), 10000); // 10-second timeout
