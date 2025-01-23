@@ -146,6 +146,9 @@ async function fetchOrderDataFromDatabase(quotationId) {
     const orderData = {
       ...orderResult.rows[0],
       products: productsWithNumbers, // Use products with dynamically generated numbers
+      name: salesRepResult.rows[0]?.name || 'N/A', // Default value if missing
+      email: salesRepResult.rows[0]?.email || 'N/A', // Default value if missing
+      phone: salesRepResult.rows[0]?.phone || 'N/A', // Default value if missing
     };
 
     console.log('Final Quotation Data:', orderData); // Log the final orderData object
