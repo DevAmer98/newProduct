@@ -133,7 +133,7 @@ async function sendNotificationToStorekeeper(message, title = 'Notification') {
     client.release();
   }
 }
-
+/*
 // PUT /api/orders/:id/accept-supervisor
 router.put('/acceptSupervisorQuotation/:id', async (req, res) => {
   const { id } = req.params;
@@ -170,6 +170,65 @@ router.put('/acceptSupervisorQuotation/:id', async (req, res) => {
       error: 'Internal Server Error',
       details: error.message,
     });
+  }
+});
+*/
+
+
+
+// PUT /api/orders/:id/accept-supervisor
+router.put('/acceptSupervisorQuotation/:id', async (req, res) => {
+  const { id } = req.params;
+  const { supervisor_id } = req.body; // Supervisor ID passed in the request body
+
+  if (!id || !supervisor_id) {
+    return res.status(400).json({ error: 'Missing quotation ID or supervisor ID' });
+  }
+
+  const client = await pool.connect();
+  try {
+    // Step 1: Verify that the supervisor exists
+    const getSupervisorQuery = 'SELECT id FROM supervisors WHERE id = $1';
+    const supervisorResult = await executeWithRetry(async () => {
+      return await withTimeout(client.query(getSupervisorQuery, [supervisor_id]), 10000); // 10-second timeout
+    });
+
+    if (supervisorResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Supervisor not found' });
+    }
+
+    // Step 2: Update the quotation with the supervisor's ID
+    const updateOrderQuery = `
+      UPDATE quotations 
+      SET supervisoraccept = 'accepted',
+          supervisor_id = $2,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `;
+    await executeWithRetry(async () => {
+      return await withTimeout(client.query(updateOrderQuery, [id, supervisor_id]), 10000); // 10-second timeout
+    });
+
+    // Step 3: Send notifications
+    await sendNotificationToStorekeeper(
+      `تم قبول عرض السعر  ${id} من قبل المشرف.`,
+      'المشرف قبل عرض السعر'
+    );
+
+    await sendNotificationToManager(
+      `تم قبول عرض السعر رقم ${id} من قبل المشرف.`,
+      'المشرف قبل عرض السعر'
+    );
+
+    return res.status(200).json({ message: 'Quotation accepted successfully' });
+  } catch (error) {
+    console.error('Database error:', error);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      details: error.message,
+    });
+  } finally {
+    client.release();
   }
 });
 
