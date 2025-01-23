@@ -178,9 +178,14 @@ export async function servePDF(quotationId, res) {
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
     const pdfBuffer = await generatePDF(orderData, templatePath);
 
+
+      // Use custom_id for the filename
+      const customId = orderData.custom_id || `quotation_${quotationId}`; // Fallback to quotationId if custom_id is missing
+      const fileName = `quotation_${customId}.pdf`;
+
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=quotation_${quotationId}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
     res.setHeader('Content-Length', pdfBuffer.length);
 
     // Send the PDF as a response
