@@ -108,9 +108,11 @@ async function fetchOrderDataFromDatabase(quotationId) {
     const orderQuery = `
       SELECT q.*, c.company_name, c.client_name, c.phone_number, 
              c.tax_number, c.branch_number, c.latitude, c.longitude, 
-             c.street, c.city, c.region, q.storekeeper_notes
+             c.street, c.city, c.region, q.storekeeper_notes,
+             s.name AS supervisor_name -- Include supervisor's name
       FROM quotations q
       JOIN clients c ON q.client_id = c.id
+      LEFT JOIN supervisors s ON q.supervisor_id = s.id -- Join with supervisors table
       WHERE q.id = $1
     `;
     const orderResult = await pool.query(orderQuery, [quotationId]);
@@ -149,6 +151,7 @@ async function fetchOrderDataFromDatabase(quotationId) {
       name: salesRepResult.rows[0]?.name || 'N/A', // Default value if missing
       email: salesRepResult.rows[0]?.email || 'N/A', // Default value if missing
       phone: salesRepResult.rows[0]?.phone || 'N/A', // Default value if missing
+      supervisor_name: orderResult.rows[0]?.supervisor_name || 'No Supervisor Assigned', // Include supervisor's name
     };
 
     console.log('Final Quotation Data:', orderData); // Log the final orderData object
