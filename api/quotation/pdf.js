@@ -144,9 +144,13 @@ async function fetchOrderDataFromDatabase(quotationId) {
     const salesRepResult = await pool.query(salesRepQuery, [orderResult.rows[0].sales_rep_id]);
     console.log('Sales Rep Query Result:', salesRepResult.rows); // Log the query result
 
+    // Format the created_at field to only include the date
+    const formattedCreatedAt = new Date(orderResult.rows[0].created_at).toISOString().split('T')[0];
+
     // Flatten salesRep fields into the root of the orderData object
     const orderData = {
       ...orderResult.rows[0],
+      created_at: formattedCreatedAt, // Use the formatted date
       products: productsWithNumbers, // Use products with dynamically generated numbers
       name: salesRepResult.rows[0]?.name || 'N/A', // Default value if missing
       email: salesRepResult.rows[0]?.email || 'N/A', // Default value if missing
