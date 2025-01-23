@@ -36,20 +36,20 @@ const pool = new Pool({
  */
 export async function generatePDF(orderData, templatePath, filePath = null) {
   try {
-    // Step 1: Load the .docx template
+    // Load the .docx template
     const templateContent = fs.readFileSync(templatePath, 'binary');
     const zip = new PizZip(templateContent);
 
-    // Step 2: Initialize Docxtemplater with the PizZip instance
+    // Initialize Docxtemplater
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
       linebreaks: true,
     });
 
-    // Step 3: Populate the template with data
+    // Populate the template with data
     doc.setData(orderData);
 
-    // Step 4: Render the document (replace all placeholders with data)
+    // Render the document
     try {
       doc.render();
     } catch (error) {
@@ -57,13 +57,13 @@ export async function generatePDF(orderData, templatePath, filePath = null) {
       throw new Error(`Failed to render template: ${error.message}`);
     }
 
-    // Step 5: Generate the .docx buffer
+    // Generate the .docx buffer
     const docxBuffer = doc.getZip().generate({ type: 'nodebuffer' });
 
-    // Step 6: Convert the .docx buffer to a PDF
+    // Convert the .docx buffer to a PDF
     const pdfBuffer = await convertDocxToPDF(docxBuffer);
 
-    // If filePath is provided, save the PDF file
+    // Save the PDF file if filePath is provided
     if (filePath) {
       const dir = path.dirname(filePath);
       if (!fs.existsSync(dir)) {
@@ -79,7 +79,6 @@ export async function generatePDF(orderData, templatePath, filePath = null) {
     throw new Error(`Failed to generate PDF: ${error.message}`);
   }
 }
-
 /**
  * Converts a .docx buffer to a PDF buffer using libreoffice-convert.
  * @param {Buffer} docxBuffer - The .docx file as a buffer.
