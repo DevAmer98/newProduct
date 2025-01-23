@@ -33,8 +33,7 @@ const pool = new Pool({
  * @param {string} templatePath - The path to the .docx template file.
  * @param {string} filePath - The path to save the PDF (optional).
  * @returns {Promise<Buffer>} - Returns the PDF buffer for streaming.
- */
-export async function generatePDF(orderData, templatePath, filePath = null) {
+ */export async function generatePDF(orderData, templatePath, filePath = null) {
   try {
     console.log('Loading template from:', templatePath);
 
