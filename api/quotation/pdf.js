@@ -157,12 +157,12 @@ async function fetchOrderDataFromDatabase(quotationId) {
  * Serves the PDF for a given order ID.
  * @param {string} quotationId - The ID of the order.
  * @param {Object} res - The Express response object.
- */
-export async function servePDF(quotationId, res) {
+ */export async function servePDF(req, res) {
   try {
-    // Fetch order data from the database
-    const orderData = await fetchOrderDataFromDatabase(quotationId);
-    console.log('Quotation Data:', orderData); // Log the orderData object
+    const { id } = req.params;
+    const orderData = req.body; // Get orderData from the request body
+
+    console.log('Received Order Data:', orderData); // Log the orderData object
 
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
@@ -170,7 +170,7 @@ export async function servePDF(quotationId, res) {
 
     // Set headers for mobile compatibility
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=quotation_${quotationId}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=quotation_${id}.pdf`);
     res.setHeader('Content-Length', pdfBuffer.length);
 
     // Send the PDF as a response
