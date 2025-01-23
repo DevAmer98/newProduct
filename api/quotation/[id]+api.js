@@ -48,7 +48,6 @@ async function testConnection() {
 }
 
 testConnection();
-
 router.get('/quotations/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -57,6 +56,7 @@ router.get('/quotations/:id', async (req, res) => {
   }
 
   try {
+    // Fetch quotation details
     const quotationQuery = `
       SELECT q.*, c.company_name, c.client_name, c.phone_number, 
              c.tax_number, c.branch_number, c.latitude, c.longitude, 
@@ -74,6 +74,7 @@ router.get('/quotations/:id', async (req, res) => {
       return res.status(404).json({ error: 'Quotation not found' });
     }
 
+    // Fetch products
     const productsQuery = `
       SELECT * FROM quotation_products
       WHERE quotation_id = $1
@@ -82,9 +83,20 @@ router.get('/quotations/:id', async (req, res) => {
       return await withTimeout(pool.query(productsQuery, [id]), 10000); // 10-second timeout
     });
 
+    // Fetch sales representative
+    const salesRepQuery = `
+      SELECT name, email, phone FROM salesreps
+      WHERE id = $1
+    `;
+    const salesRepResult = await executeWithRetry(async () => {
+      return await withTimeout(pool.query(salesRepQuery, [quotationResult.rows[0].sales_rep_id]), 10000); // 10-second timeout
+    });
+
+    // Combine all data into the response
     const orderData = {
       ...quotationResult.rows[0],
       products: productsResult.rows,
+      salesRep: salesRepResult.rows[0] || null, // Include salesRep data
     };
 
     return res.status(200).json(orderData);
