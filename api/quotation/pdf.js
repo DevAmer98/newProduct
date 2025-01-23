@@ -36,6 +36,8 @@ const pool = new Pool({
  */
 export async function generatePDF(orderData, templatePath, filePath = null) {
   try {
+    console.log('Loading template from:', templatePath);
+
     // Load the .docx template
     const templateContent = fs.readFileSync(templatePath, 'binary');
     const zip = new PizZip(templateContent);
