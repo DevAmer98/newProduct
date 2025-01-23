@@ -164,6 +164,11 @@ export async function servePDF(quotationId, res, salesRep) {
     const orderData = await fetchOrderDataFromDatabase(quotationId, salesRep);
     console.log('Quotation Data:', orderData); // Log the orderData object
 
+    // Validate orderData
+    if (!orderData || typeof orderData !== 'object') {
+      throw new Error('Invalid order data');
+    }
+
     // Generate the PDF
     const templatePath = path.resolve(__dirname, '../../templates/Quotation.docx');
     const pdfBuffer = await generatePDF(orderData, templatePath);
