@@ -93,8 +93,6 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
     client.release();
   }
 }
-
-// POST endpoint to create a quotation
 router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -104,6 +102,7 @@ router.post('/quotations/salesRep', async (req, res) => {
       const {
         client_id,
         username,
+        sales_rep_id, // Ensure this is included
         delivery_date,
         delivery_type,
         products,
@@ -111,8 +110,11 @@ router.post('/quotations/salesRep', async (req, res) => {
         status = 'not Delivered',
       } = req.body;
 
+      // Debug the request body
+      console.log('Request Body:', req.body);
+
       // Validate required fields
-      if (!client_id || !username || !delivery_date || !delivery_type || !products || products.length === 0) {
+      if (!client_id || !username || !sales_rep_id || !delivery_date || !delivery_type || !products || products.length === 0) {
         await client.query('ROLLBACK'); // Rollback if validation fails
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -126,9 +128,9 @@ router.post('/quotations/salesRep', async (req, res) => {
       // Insert quotation
       const quotationResult = await withTimeout(
         client.query(
-          `INSERT INTO quotations (client_id, username, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-          [client_id, username, formattedDate, delivery_type, notes || null, status, 0, 0, 0, customId]
+          `INSERT INTO quotations (client_id, username, sales_rep_id, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+          [client_id, username, sales_rep_id, formattedDate, delivery_type, notes || null, status, 0, 0, 0, customId]
         ),
         10000 // 10-second timeout
       );
@@ -198,12 +200,14 @@ router.post('/quotations/salesRep', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK'); // Rollback on any error
     console.error('Error creating quotation:', error);
-    return res.status(500).json({ error: error.message || 'Error creating quotation' });
+    return res.status(500).json({ 
+      error: error.message || 'Error creating quotation',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
   } finally {
     client.release(); // Release the client back to the pool
   }
 });
-
 // GET endpoint to fetch orders
 router.get('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
