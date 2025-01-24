@@ -20,7 +20,7 @@ router.use(express.json()); // Middleware to parse JSON bodies
 
 // Utility function to retry database operations
 const executeWithRetry = async (fn, retries = 3, delay = 1000) => {
-  try { 
+  try {
     return await fn();
   } catch (error) {
     if (retries > 0) {
@@ -92,9 +92,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
   } finally {
     client.release();
   }
-};
-
-
+}
 router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -104,12 +102,11 @@ router.post('/quotations/salesRep', async (req, res) => {
       const {
         client_id,
         username,
-        sales_rep_id,
+        sales_rep_id, // Ensure this is included
         delivery_date,
         delivery_type,
         products,
         notes,
-        condition = 'cash', // Default to 'cash' if not provided
         status = 'not Delivered',
       } = req.body;
 
@@ -128,19 +125,13 @@ router.post('/quotations/salesRep', async (req, res) => {
       // Generate custom ID
       const customId = await generateCustomId(client);
 
-      // Log the INSERT query and parameters
-      const insertQuery = `
-        INSERT INTO quotations (client_id, username, sales_rep_id, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id, condition)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id
-      `;
-      const insertParams = [client_id, username, sales_rep_id, formattedDate, delivery_type, notes || null, status, 0, 0, 0, customId, condition];
-
-      console.log('Executing INSERT query:', insertQuery);
-      console.log('Query parameters:', insertParams);
-
       // Insert quotation
       const quotationResult = await withTimeout(
-        client.query(insertQuery, insertParams),
+        client.query(
+          `INSERT INTO quotations (client_id, username, sales_rep_id, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id,condition)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,$12) RETURNING id`,
+          [client_id, username, sales_rep_id, formattedDate, delivery_type, notes || null, status, 0, 0, 0, customId, condition]
+        ),
         10000 // 10-second timeout
       );
 
@@ -205,6 +196,7 @@ router.post('/quotations/salesRep', async (req, res) => {
         totalVat,
         totalSubtotal,
         condition, // Return the condition in the response
+
       });
     });
   } catch (error) {
@@ -218,7 +210,6 @@ router.post('/quotations/salesRep', async (req, res) => {
     client.release(); // Release the client back to the pool
   }
 });
-
 
 
 
