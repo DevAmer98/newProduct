@@ -40,16 +40,17 @@ const withTimeout = (promise, timeout) => {
 };
 
 
-
 const generateCustomId = async (client) => {
+  const year = new Date().getFullYear();
   const result = await client.query(
-    `SELECT MAX(custom_id) AS last_id FROM quotations`
+    `SELECT MAX(SUBSTRING(custom_id FROM 10)::int) AS last_id 
+     FROM quotations 
+     WHERE custom_id LIKE $1`,
+    [`NPQ-${year}-%`]
   );
-  const lastCustomId = result.rows[0].last_id || '00000 Rev0';
-  const [lastNumber, lastRev] = lastCustomId.split(' Rev');
-  const nextNumber = String(parseInt(lastNumber, 10) + 1).padStart(5, '0');
-  const nextRev = parseInt(lastRev, 10) + 1;
-  return `${nextNumber} Rev${nextRev}`;
+  const lastId = result.rows[0].last_id || 0;
+  const newId = `NPQ-${year}-${String(lastId + 1).padStart(5, '0')}`;
+  return newId;
 };
 
 // Function to send notifications to supervisors
@@ -97,127 +98,75 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
 router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
-    await executeWithRetry(async () => {
-      await client.query('BEGIN'); // Start transaction
+    await client.query('BEGIN');
+    const { client_id, username, sales_rep_id, delivery_date, delivery_type, products, notes, condition = 'cash', status = 'not Delivered' } = req.body;
 
-      const {
-        client_id,
-        username,
-        sales_rep_id,
-        delivery_date,
-        delivery_type,
-        products,
-        notes,
-        condition = 'cash', // Default to 'cash' if not provided
-        status = 'not Delivered',
-      } = req.body;
+    // Validate required fields
+    if (!client_id || !username || !sales_rep_id || !delivery_date || !delivery_type || !products || products.length === 0) {
+      throw new Error('Missing required fields');
+    }
 
-      // Debug the request body
-      console.log('Request Body:', req.body);
+    // Format delivery date
+    const formattedDate = moment(delivery_date).tz('UTC').format('YYYY-MM-DD HH:mm:ss');
+    const customId = await generateCustomId(client); // Generate custom_id without RevX
 
-      // Validate required fields
-      if (!client_id || !username || !sales_rep_id || !delivery_date || !delivery_type || !products || products.length === 0) {
-        await client.query('ROLLBACK'); // Rollback if validation fails
-        return res.status(400).json({ error: 'Missing required fields' });
+    // Insert main quotation
+    const insertQuery = `
+      INSERT INTO quotations (client_id, username, sales_rep_id, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id, condition)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id
+    `;
+    const insertParams = [client_id, username, sales_rep_id, formattedDate, delivery_type, notes || null, status, 0, 0, 0, customId, condition];
+    const quotationResult = await client.query(insertQuery, insertParams);
+    const quotationId = quotationResult.rows[0].id;
+
+    let totalPrice = 0, totalVat = 0, totalSubtotal = 0;
+    // Insert products
+    for (const product of products) {
+      const { section, type, description, quantity, price } = product;
+      if (!section || !type || !quantity || !price) {
+        throw new Error('Missing product details or price');
       }
-
-      // Format delivery date
-      const formattedDate = moment(delivery_date).tz('UTC').format('YYYY-MM-DD HH:mm:ss');
-
-      // Generate custom ID
-      const customId = await generateCustomId(client);
-
-      // Log the INSERT query and parameters
-      const insertQuery = `
-        INSERT INTO quotations (client_id, username, sales_rep_id, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id, condition)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id
-      `;
-      const insertParams = [client_id, username, sales_rep_id, formattedDate, delivery_type, notes || null, status, 0, 0, 0, customId, condition];
-
-      console.log('Executing INSERT query:', insertQuery);
-      console.log('Query parameters:', insertParams);
-
-      // Insert quotation
-      const quotationResult = await withTimeout(
-        client.query(insertQuery, insertParams),
-        10000 // 10-second timeout
-      );
-
-      const quotationId = quotationResult.rows[0].id;
-      let totalPrice = 0;
-      let totalVat = 0;
-      let totalSubtotal = 0;
-
-      // Insert products and calculate VAT and subtotal for each row
-      for (const product of products) {
-        const { section, type, description, quantity, price } = product;
-
-        // Validate product fields
-        if (!section || !type || !quantity || !price) {
-          await client.query('ROLLBACK'); // Rollback if product validation fails
-          return res.status(400).json({ error: 'Missing product details or price' });
-        }
-
-        const numericPrice = parseFloat(price);
-        if (isNaN(numericPrice)) {
-          await client.query('ROLLBACK'); // Rollback if price is invalid
-          return res.status(400).json({ error: 'Invalid price format' });
-        }
-
-        // Calculate VAT and subtotal for the current product row
-        const vat = numericPrice * 0.15; // VAT is 15% of the product price
-        const subtotal = numericPrice + vat; // Subtotal is price + VAT
-
-        // Update totals for the entire quotation
-        totalPrice += numericPrice * quantity;
-        totalVat += vat * quantity;
-        totalSubtotal += subtotal * quantity;
-
-        // Insert the product row with VAT and subtotal
-        await client.query(
-          `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price, vat, subtotal)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [quotationId, section, type, description, quantity, numericPrice, vat, subtotal]
-        );
-      }
-
-      // Update the quotation with the total price, total VAT, and total subtotal
+      const numericPrice = parseFloat(price);
+      if (isNaN(numericPrice)) { throw new Error('Invalid price format'); }
+      const vat = numericPrice * 0.15;
+      const subtotal = numericPrice + vat;
+      totalPrice += numericPrice * quantity;
+      totalVat += vat * quantity;
+      totalSubtotal += subtotal * quantity;
       await client.query(
-        `UPDATE quotations 
-         SET total_price = $1, 
-             total_vat = $2, 
-             total_subtotal = $3 
-         WHERE id = $4`,
-        [totalPrice, totalVat, totalSubtotal, quotationId]
+        `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price, vat, subtotal)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [quotationId, section, type, description, quantity, numericPrice, vat, subtotal]
       );
+    }
 
+    // Update the quotation totals
+    await client.query(
+      `UPDATE quotations SET total_price = $1, total_vat = $2, total_subtotal = $3 WHERE id = $4`,
+      [totalPrice, totalVat, totalSubtotal, quotationId]
+    );
 
-      // Send notifications to supervisors
-      await sendNotificationToSupervisor(`تم إنشاء عرض سعر جديد بالمعرف ${customId} وينتظر موافقتك.`, 'إشعار عرض سعر جديد');
-
-      return res.status(201).json({
-        quotationId,
-        customId,
-        status: 'success',
-        totalPrice,
-        totalVat,
-        totalSubtotal,
-        condition, // Return the condition in the response
-      });
-    });
     await client.query('COMMIT');
+    await sendNotificationToSupervisor(`تم إنشاء عرض سعر جديد بالمعرف ${customId} وينتظر موافقتك.`, 'إشعار عرض سعر جديد');
+    return res.status(201).json({
+      quotationId,
+      customId,
+      status: 'success',
+      totalPrice,
+      totalVat,
+      totalSubtotal,
+      condition,
+    });
   } catch (error) {
     console.error('Transaction Error:', error);
     await client.query('ROLLBACK');
     return res.status(500).json({
-      error: 'Transaction failed',
-      details: error.message
+      error: error.message
     });
   } finally {
     client.release();
-  } 
+  }
 });
-
 
 /*
 router.post('/quotations/salesRep', async (req, res) => {
