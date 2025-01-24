@@ -113,97 +113,7 @@ router.get('/quotations/:id', async (req, res) => {
     });
   }
 });
-/*
-router.put('/quotations/:id', async (req, res) => {
-  const { id } = req.params;
-  const body = req.body;
 
-  if (!id) {
-    return res.status(400).json({ error: 'Missing quotation ID' });
-  }
-
-  try {
-    const {
-      client_id,
-      delivery_date,
-      delivery_type,
-      notes,
-      products,
-      status = 'not Delivered',
-      storekeeperaccept = 'pending',
-      supervisoraccept = 'pending',
-      total_price,
-    } = body;
-
-    // Set `actual_delivery_date` if the status is "delivered"
-    const actualDeliveryDate = status === 'delivered' ? new Date().toISOString() : null;
-
-    const updateQuoatationQuery = `
-      UPDATE quotations 
-      SET client_id = $1,
-          delivery_date = $2,
-          delivery_type = $3,
-          notes = $4,
-          status = $5,
-          storekeeperaccept = $6,
-          supervisoraccept = $7,
-          updated_at = CURRENT_TIMESTAMP,
-          actual_delivery_date = COALESCE($8, actual_delivery_date),
-          storekeeper_notes = $9,
-          total_price = $10
-      WHERE id = $11
-    `;
-
-    await executeWithRetry(async () => {
-      return await withTimeout(
-        pool.query(updateQuoatationQuery, [
-          client_id,
-          delivery_date,
-          delivery_type,
-          notes || null,
-          status,
-          storekeeperaccept,
-          supervisoraccept,
-          actualDeliveryDate,
-          body.storekeeper_notes || null,
-          total_price,
-          id,
-        ]),
-        10000 // 10-second timeout
-      );
-    });
-
-    if (products && products.length > 0) {
-      const deleteProductsQuery = `DELETE FROM quotation_products WHERE quotation_id = $1`;
-      await executeWithRetry(async () => {
-        return await withTimeout(pool.query(deleteProductsQuery, [id]), 10000); // 10-second timeout
-      });
-
-      for (const product of products) {
-        const { section, type, quantity, description,price } = product;
-        await executeWithRetry(async () => {
-          return await withTimeout(
-            pool.query(
-              `INSERT INTO quotation_products (quotation_id, section, type, description, quantity,price) 
-               VALUES ($1, $2, $3, $4, $5, $6)`,
-              [id, section, type, description, quantity, price]
-            ),
-            10000 // 10-second timeout
-          );
-        });
-      }
-    }
-
-    return res.status(200).json({ message: 'Quotation and products updated successfully' });
-  } catch (error) {
-    console.error('Database error:', error);
-    return res.status(500).json({
-      error: 'Internal Server Error',
-      details: error.message,
-    });
-  }
-});
-*/
 
 
 
@@ -215,122 +125,164 @@ router.put('/quotations/:id', async (req, res) => {
     return res.status(400).json({ error: 'Missing quotation ID' });
   }
 
+  const client = await pool.connect();
   try {
-    const {
-      client_id,
-      delivery_date,
-      delivery_type,
-      notes,
-      products,
-      status = 'not Delivered',
-      storekeeperaccept = 'pending',
-      supervisoraccept = 'pending',
-    } = body;
-
-    // Set `actual_delivery_date` if the status is "delivered"
-    const actualDeliveryDate = status === 'delivered' ? new Date().toISOString() : null;
-
-    // Calculate totals based on products
-    let totalPrice = 0;
-    let totalVat = 0;
-    let totalSubtotal = 0;
-
-    if (products && products.length > 0) {
-      for (const product of products) {
-        const { price, quantity } = product;
-        const numericPrice = parseFloat(price) || 0;
-        const numericQuantity = parseFloat(quantity) || 0;
-
-        const totalPriceForProduct = numericPrice * numericQuantity; // Total price for the quantity
-        const vat = totalPriceForProduct * 0.15; // VAT is 15% of the total price for the quantity
-        const subtotal = totalPriceForProduct + vat; // Subtotal is total price + VAT
-
-        totalPrice += totalPriceForProduct;
-        totalVat += vat;
-        totalSubtotal += subtotal;
-      }
-    }
-
-    // Update the quotation with the new totals
-    const updateQuotationQuery = `
-      UPDATE quotations 
-      SET client_id = $1,
-          delivery_date = $2,
-          delivery_type = $3,
-          notes = $4,
-          status = $5,
-          storekeeperaccept = $6,
-          supervisoraccept = $7,
-          updated_at = CURRENT_TIMESTAMP,
-          actual_delivery_date = COALESCE($8, actual_delivery_date),
-          storekeeper_notes = $9,
-          total_price = $10,
-          total_vat = $11,
-          total_subtotal = $12
-      WHERE id = $13
-    `;
-
     await executeWithRetry(async () => {
-      return await withTimeout(
-        pool.query(updateQuotationQuery, [
-          client_id,
-          delivery_date,
-          delivery_type,
-          notes || null,
-          status,
-          storekeeperaccept,
-          supervisoraccept,
-          actualDeliveryDate,
-          body.storekeeper_notes || null,
-          totalPrice,
-          totalVat,
-          totalSubtotal,
-          id,
-        ]),
-        10000 // 10-second timeout
-      );
-    });
+      await client.query('BEGIN'); // Start transaction
 
-    // Update products if provided
-    if (products && products.length > 0) {
-      const deleteProductsQuery = `DELETE FROM quotation_products WHERE quotation_id = $1`;
-      await executeWithRetry(async () => {
-        return await withTimeout(pool.query(deleteProductsQuery, [id]), 10000); // 10-second timeout
+      const {
+        client_id,
+        delivery_date,
+        delivery_type,
+        notes,
+        products,
+        status = 'not Delivered',
+        storekeeperaccept = 'pending',
+        supervisoraccept = 'pending',
+      } = body;
+
+      // Fetch the current quotation to get the custom_id
+      const getQuotationQuery = `SELECT custom_id FROM quotations WHERE id = $1`;
+      const quotationResult = await executeWithRetry(async () => {
+        return await withTimeout(client.query(getQuotationQuery, [id]), 10000); // 10-second timeout
       });
 
-      for (const product of products) {
-        const { section, type, quantity, description, price } = product;
-
-        // Calculate VAT and subtotal for each product
-        const numericPrice = parseFloat(price) || 0;
-        const numericQuantity = parseFloat(quantity) || 0;
-
-        const totalPriceForProduct = numericPrice * numericQuantity; // Total price for the quantity
-        const vat = totalPriceForProduct * 0.15; // VAT is 15% of the total price for the quantity
-        const subtotal = totalPriceForProduct + vat; // Subtotal is total price + VAT
-
-        await executeWithRetry(async () => {
-          return await withTimeout(
-            pool.query(
-              `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price, vat, subtotal) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-              [id, section, type, description, quantity, price, vat, subtotal]
-            ),
-            10000 // 10-second timeout
-          );
-        });
+      if (quotationResult.rows.length === 0) {
+        await client.query('ROLLBACK'); // Rollback if quotation not found
+        return res.status(404).json({ error: 'Quotation not found' });
       }
-    }
 
-    return res.status(200).json({ message: 'Quotation and products updated successfully' });
+      const currentCustomId = quotationResult.rows[0].custom_id;
+      let newCustomId;
+
+      // Determine the next revision number
+      const revisionMatch = currentCustomId.match(/Rev(\d+)$/);
+      if (revisionMatch) {
+        const currentRevision = parseInt(revisionMatch[1], 10);
+        newCustomId = currentCustomId.replace(/Rev\d+$/, `Rev${currentRevision + 1}`);
+      } else {
+        newCustomId = `${currentCustomId} Rev1`;
+      }
+
+      // Set `actual_delivery_date` if the status is "delivered"
+      const actualDeliveryDate = status === 'delivered' ? new Date().toISOString() : null;
+
+      // Calculate totals based on products
+      let totalPrice = 0;
+      let totalVat = 0;
+      let totalSubtotal = 0;
+
+      if (products && products.length > 0) {
+        for (const product of products) {
+          const { price, quantity } = product;
+          const numericPrice = parseFloat(price) || 0;
+          const numericQuantity = parseFloat(quantity) || 0;
+
+          const totalPriceForProduct = numericPrice * numericQuantity; // Total price for the quantity
+          const vat = totalPriceForProduct * 0.15; // VAT is 15% of the total price for the quantity
+          const subtotal = totalPriceForProduct + vat; // Subtotal is total price + VAT
+
+          totalPrice += totalPriceForProduct;
+          totalVat += vat;
+          totalSubtotal += subtotal;
+        }
+      }
+
+      // Update the quotation with the new custom_id, totals, and set supervisoraccept to 'pending'
+      const updateQuotationQuery = `
+        UPDATE quotations 
+        SET client_id = $1,
+            delivery_date = $2,
+            delivery_type = $3,
+            notes = $4,
+            status = $5,
+            storekeeperaccept = $6,
+            supervisoraccept = $7,
+            updated_at = CURRENT_TIMESTAMP,
+            actual_delivery_date = COALESCE($8, actual_delivery_date),
+            storekeeper_notes = $9,
+            total_price = $10,
+            total_vat = $11,
+            total_subtotal = $12,
+            custom_id = $13
+        WHERE id = $14
+      `;
+
+      await executeWithRetry(async () => {
+        return await withTimeout(
+          client.query(updateQuotationQuery, [
+            client_id,
+            delivery_date,
+            delivery_type,
+            notes || null,
+            status,
+            storekeeperaccept,
+            'pending', // Set supervisoraccept to 'pending'
+            actualDeliveryDate,
+            body.storekeeper_notes || null,
+            totalPrice,
+            totalVat,
+            totalSubtotal,
+            newCustomId, // Updated custom_id with revision number
+            id,
+          ]),
+          10000 // 10-second timeout
+        );
+      });
+
+      // Update products if provided
+      if (products && products.length > 0) {
+        const deleteProductsQuery = `DELETE FROM quotation_products WHERE quotation_id = $1`;
+        await executeWithRetry(async () => {
+          return await withTimeout(client.query(deleteProductsQuery, [id]), 10000); // 10-second timeout
+        });
+
+        for (const product of products) {
+          const { section, type, quantity, description, price } = product;
+
+          // Calculate VAT and subtotal for each product
+          const numericPrice = parseFloat(price) || 0;
+          const numericQuantity = parseFloat(quantity) || 0;
+
+          const totalPriceForProduct = numericPrice * numericQuantity; // Total price for the quantity
+          const vat = totalPriceForProduct * 0.15; // VAT is 15% of the total price for the quantity
+          const subtotal = totalPriceForProduct + vat; // Subtotal is total price + VAT
+
+          await executeWithRetry(async () => {
+            return await withTimeout(
+              client.query(
+                `INSERT INTO quotation_products (quotation_id, section, type, description, quantity, price, vat, subtotal) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                [id, section, type, description, quantity, price, vat, subtotal]
+              ),
+              10000 // 10-second timeout
+            );
+          });
+        }
+      }
+
+      await client.query('COMMIT'); // Commit transaction
+      return res.status(200).json({
+        message: 'Quotation and products updated successfully',
+        custom_id: newCustomId, // Return the updated custom_id
+      });
+    });
   } catch (error) {
+    await client.query('ROLLBACK'); // Rollback on any error
     console.error('Database error:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
       details: error.message,
     });
+  } finally {
+    client.release(); // Release the client back to the pool
   }
 });
+
+
+
+
+
 // DELETE /api/orders/:id
 router.delete('/quotations/:id', async (req, res) => {
   const { id } = req.params;
