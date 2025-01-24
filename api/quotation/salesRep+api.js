@@ -94,6 +94,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
   }
 };
 
+
 router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
