@@ -190,7 +190,6 @@ router.post('/quotations/salesRep', async (req, res) => {
         [totalPrice, totalVat, totalSubtotal, quotationId]
       );
 
-      await client.query('COMMIT'); // Commit transaction
 
       // Send notifications to supervisors
       await sendNotificationToSupervisor(`تم إنشاء عرض سعر جديد بالمعرف ${customId} وينتظر موافقتك.`, 'إشعار عرض سعر جديد');
@@ -205,16 +204,17 @@ router.post('/quotations/salesRep', async (req, res) => {
         condition, // Return the condition in the response
       });
     });
+    await client.query('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK'); // Rollback on any error
-    console.error('Error creating quotation:', error);
-    return res.status(500).json({ 
-      error: error.message || 'Error creating quotation',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    console.error('Transaction Error:', error);
+    await client.query('ROLLBACK');
+    return res.status(500).json({
+      error: 'Transaction failed',
+      details: error.message
     });
   } finally {
-    client.release(); // Release the client back to the pool
-  }
+    client.release();
+  } 
 });
 
 
