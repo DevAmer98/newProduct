@@ -92,7 +92,9 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
   } finally {
     client.release();
   }
-}router.post('/quotations/salesRep', async (req, res) => {
+};
+
+router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
     await executeWithRetry(async () => {
@@ -209,6 +211,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
     client.release(); // Release the client back to the pool
   }
 });
+
 // GET endpoint to fetch orders
 router.get('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
