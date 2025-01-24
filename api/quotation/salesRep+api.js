@@ -39,18 +39,17 @@ const withTimeout = (promise, timeout) => {
   return Promise.race([promise, timeoutPromise]);
 };
 
-// Function to generate custom ID
+
+
 const generateCustomId = async (client) => {
-  const year = new Date().getFullYear();
   const result = await client.query(
-    `SELECT MAX(SUBSTRING(custom_id FROM 10)::int) AS last_id 
-     FROM quotations 
-     WHERE custom_id LIKE $1`,
-    [`NPQ-${year}-%`]
+    `SELECT MAX(custom_id) AS last_id FROM quotations`
   );
-  const lastId = result.rows[0].last_id || 0;
-  const newId = `NPQ-${year}-${String(lastId + 1).padStart(5, '0')}`;
-  return newId;
+  const lastCustomId = result.rows[0].last_id || '00000 Rev0';
+  const [lastNumber, lastRev] = lastCustomId.split(' Rev');
+  const nextNumber = String(parseInt(lastNumber, 10) + 1).padStart(5, '0');
+  const nextRev = parseInt(lastRev, 10) + 1;
+  return `${nextNumber} Rev${nextRev}`;
 };
 
 // Function to send notifications to supervisors
@@ -94,7 +93,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
   }
 }
 
-/*
+
 router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -218,9 +217,9 @@ router.post('/quotations/salesRep', async (req, res) => {
     client.release();
   } 
 });
-*/
 
 
+/*
 router.post('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -294,7 +293,7 @@ router.post('/quotations/salesRep', async (req, res) => {
   }
 });
 
-
+*/
 
 // GET endpoint to fetch orders
 router.get('/quotations/salesRep', async (req, res) => {
