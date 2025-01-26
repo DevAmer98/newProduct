@@ -71,7 +71,7 @@ router.post('/fcm-token', async (req, res) => {
       case 'storekeeper':
         query = 'UPDATE Storekeepers SET fcm_token = $1 WHERE email = $2';
         break;
-        case 'salesrep':
+        case 'saleRep':
         query = 'UPDATE Salesreps SET fcm_token = $1 WHERE email = $2';
         break;
       default:
