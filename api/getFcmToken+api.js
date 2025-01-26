@@ -71,6 +71,9 @@ router.post('/fcm-token', async (req, res) => {
       case 'storekeeper':
         query = 'UPDATE Storekeepers SET fcm_token = $1 WHERE email = $2';
         break;
+        case 'salesrep':
+        query = 'UPDATE Salesreps SET fcm_token = $1 WHERE email = $2';
+        break;
       default:
         console.error('Invalid role:', role);
         return res.status(400).json({ success: false, error: `Invalid role: ${role}` });

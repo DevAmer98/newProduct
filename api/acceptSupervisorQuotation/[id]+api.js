@@ -48,6 +48,49 @@ async function testConnection() {
 testConnection();
 
 // Function to send notifications to storekeepers
+async function sendNotificationToSalesRep(message, title = 'Notification') {
+  const client = await pool.connect();
+  try {
+    const query = 'SELECT fcm_token FROM Salesreps WHERE role = $1 AND active = TRUE';
+    const result = await executeWithRetry(async () => {
+      return await withTimeout(client.query(query, ['salesrep']), 10000); // 10-second timeout
+    });
+    const tokens = result.rows.map((row) => row.fcm_token).filter((token) => token != null);
+
+    console.log(`Sending notifications to sales:`, tokens);
+
+    // Check if tokens array is empty
+    if (tokens.length === 0) {
+      console.warn('No FCM tokens found for sales. Skipping notification.');
+      return;
+    }
+
+    // Prepare the messages for Firebase
+    const messages = tokens.map((token) => ({
+      notification: {
+        title: title,
+        body: message,
+      },
+      data: {
+        role: 'salesrep', // Add role information to the payload
+      },
+      token,
+    }));
+
+    // Send the notifications
+    const response = await admin.messaging().sendEach(messages);
+    console.log('Successfully sent messages:', response);
+    return response;
+  } catch (error) {
+    console.error('Failed to send FCM messages:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+
+// Function to send notifications to storekeepers
 async function sendNotificationToManager(message, title = 'Notification') {
   const client = await pool.connect();
   try {
@@ -128,6 +171,12 @@ router.put('/acceptSupervisorQuotation/:id', async (req, res) => {
 
   
     await sendNotificationToManager(
+      `تم قبول عرض السعر رقم ${id} من قبل المشرف.`,
+      'المشرف قبل عرض السعر'
+    );
+
+
+    await sendNotificationToSalesRep(
       `تم قبول عرض السعر رقم ${id} من قبل المشرف.`,
       'المشرف قبل عرض السعر'
     );
