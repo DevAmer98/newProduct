@@ -2,7 +2,6 @@
 import express from 'express';
 import pkg from 'pg'; // Import the default export
 const { Pool } = pkg; // Destructure Pool from the default export
-import admin from '../../firebase-init.js';
 
 const router = express.Router();
 
