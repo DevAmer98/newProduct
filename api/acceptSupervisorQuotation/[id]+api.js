@@ -53,7 +53,7 @@ async function sendNotificationToSalesRep(message, title = 'Notification') {
   try {
     const query = 'SELECT fcm_token FROM Salesreps WHERE role = $1 AND active = TRUE';
     const result = await executeWithRetry(async () => {
-      return await withTimeout(client.query(query, ['salesrep']), 10000); // 10-second timeout
+      return await withTimeout(client.query(query, ['salesRep']), 10000); // 10-second timeout
     });
     const tokens = result.rows.map((row) => row.fcm_token).filter((token) => token != null);
 
@@ -72,7 +72,7 @@ async function sendNotificationToSalesRep(message, title = 'Notification') {
         body: message,
       },
       data: {
-        role: 'salesrep', // Add role information to the payload
+        role: 'salesRep', // Add role information to the payload
       },
       token,
     }));

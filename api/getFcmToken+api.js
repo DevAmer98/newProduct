@@ -103,9 +103,4 @@ router.post('/fcm-token', async (req, res) => {
   }
 });
 
-
-router.get('/fcm-token', (req, res) => {
-  res.status(200).json({ message: 'This is a GET request. Use POST to register FCM tokens.' });
-});
-
 export default router;
