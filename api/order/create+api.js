@@ -179,7 +179,7 @@ router.get('/orders', async (req, res) => {
     `;
 
     const ordersResult = await executeWithRetry(async () => {
-      return await client.query(baseQuery, baseQueryParams);
+      return await client.query(countQuery, baseQueryParams.slice(2)); // Use same query + status
     });
 
     const orders = ordersResult.rows;
