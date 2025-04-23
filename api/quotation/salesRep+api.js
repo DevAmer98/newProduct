@@ -373,6 +373,8 @@ router.get('/quotations/salesRep', async (req, res) => {
     });
 
     const orders = quotationsResult.rows;
+    console.log('Sorted IDs sent to client:', orders.map(o => o.id));
+
     const totalCount = parseInt(countResult.rows[0]?.total || 0, 10);
     const hasMore = page * limit < totalCount;
 
