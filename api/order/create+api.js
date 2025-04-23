@@ -153,7 +153,7 @@ router.get('/orders', async (req, res) => {
     const baseQueryParams = [limit, offset, `%${query}%`];
 
     if (status !== 'all') {
-      filterCondition = `(orders.status = $4 OR orders.supervisoraccept = $4)`;
+      filterCondition = `(orders.status = $4)`;
       baseQueryParams.push(status);
     }
 
