@@ -343,6 +343,9 @@ router.get('/quotations/salesRep', async (req, res) => {
       LIMIT $1 OFFSET $2
     `;
 
+
+    console.log('Sorted IDs sent to client:', orders.map(o => o.id));
+
     const countQuery = `
       SELECT COUNT(*) AS total
       FROM quotations
