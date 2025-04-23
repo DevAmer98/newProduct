@@ -207,7 +207,9 @@ router.post('/quotations/salesRep', async (req, res) => {
     client.release();
   }
 });
-/*
+
+
+
 // GET endpoint to fetch orders
 router.get('/quotations/salesRep', async (req, res) => {
   const client = await pool.connect();
@@ -244,9 +246,7 @@ router.get('/quotations/salesRep', async (req, res) => {
       JOIN clients ON quotations.client_id = clients.id
       WHERE quotations.username = $4 AND 
             (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
-      ORDER BY quotations.id DESC
-
-
+ORDER BY quotations.id::integer DESC
       LIMIT $1 OFFSET $2
     `;
 
@@ -281,126 +281,6 @@ router.get('/quotations/salesRep', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching quotations:', error);
-    return res.status(500).json({
-      error: error.message || 'Error fetching quotations',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-    });
-  } finally {
-    client.release();
-  }
-});*/
-
-
-// GET endpoint to fetch orders
-router.get('/quotations/salesRep', async (req, res) => {
-  const client = await pool.connect();
-  try {
-    // Enhanced parameter parsing with validation
-    const limit = Math.min(parseInt(req.query.limit || '10', 10), 50);
-    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
-    const query = req.query.query || '';
-    const username = req.query.username || '';
-    const offset = (page - 1) * limit;
-
-    // Debugging: Log incoming parameters
-    console.log('Request parameters:', {
-      limit,
-      page,
-      offset,
-      query,
-      username,
-      receivedAt: new Date().toISOString()
-    });
-
-    if (isNaN(limit) || isNaN(page) || isNaN(offset)) {
-      throw new Error('Invalid pagination parameters');
-    }
-
-    const baseQuery = `
-      SELECT 
-        quotations.*, 
-        clients.client_name AS client_name,
-        clients.phone_number AS client_phone,
-        clients.company_name AS client_company,
-        clients.branch_number AS client_branch,
-        clients.tax_number AS client_tax,
-        clients.latitude AS client_latitude,
-        clients.longitude AS client_longitude,
-        clients.street AS client_street,
-        clients.city AS client_city,
-        clients.region AS client_region, 
-        quotations.status,
-        quotations.storekeeperaccept,
-        quotations.actual_delivery_date,
-        quotations.total_price,
-        quotations.total_vat,
-        quotations.total_subtotal
-      FROM quotations
-      JOIN clients ON quotations.client_id = clients.id
-      WHERE quotations.username = $4 
-        AND (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
-      ORDER BY quotations.id::integer DESC
-      LIMIT $1 OFFSET $2
-    `;
-
-
-    console.log('Sorted IDs sent to client:', orders.map(o => o.id));
-
-    const countQuery = `
-      SELECT COUNT(*) AS total
-      FROM quotations
-      JOIN clients ON quotations.client_id = clients.id
-      WHERE quotations.username = $2 
-        AND (clients.client_name ILIKE $1 OR clients.company_name ILIKE $1)
-    `;
-
-    const baseQueryParams = [limit, offset, `%${query}%`, username];
-    const countQueryParams = [`%${query}%`, username];
-
-    // Debugging: Log the actual query being executed
-    console.log('Executing query with parameters:', {
-      baseQuery,
-      baseQueryParams,
-      countQuery,
-      countQueryParams
-    });
-
-    const [quotationsResult, countResult] = await executeWithRetry(async () => {
-      return await Promise.all([
-        withTimeout(client.query(baseQuery, baseQueryParams), 10000),
-        withTimeout(client.query(countQuery, countQueryParams), 10000),
-      ]);
-    });
-
-    const orders = quotationsResult.rows;
-    console.log('Sorted IDs sent to client:', orders.map(o => o.id));
-
-    const totalCount = parseInt(countResult.rows[0]?.total || 0, 10);
-    const hasMore = page * limit < totalCount;
-
-    // Debugging: Log the response data
-    console.log('Returning response:', {
-      ordersCount: orders.length,
-      firstID: orders[0]?.id,
-      lastID: orders[orders.length - 1]?.id,
-      hasMore,
-      totalCount,
-      currentPage: page
-    });
-
-    return res.status(200).json({
-      orders,
-      hasMore,
-      totalCount,
-      currentPage: page,
-      totalPages: Math.ceil(totalCount / limit),
-    });
-  } catch (error) {
-    console.error('Error fetching quotations:', {
-      error: error.message,
-      stack: error.stack,
-      time: new Date().toISOString()
-    });
     return res.status(500).json({
       error: error.message || 'Error fetching quotations',
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
