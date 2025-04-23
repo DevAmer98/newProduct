@@ -219,7 +219,7 @@ router.get('/quotations/salesRep', async (req, res) => {
 
     const offset = (page - 1) * limit;
 
-    const sortOrder = req.query.sort === 'asc' ? 'ASC' : 'DESC';
+    
 
     const baseQuery = `
       SELECT 
@@ -244,7 +244,8 @@ router.get('/quotations/salesRep', async (req, res) => {
       JOIN clients ON quotations.client_id = clients.id
       WHERE quotations.username = $4 AND 
             (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
-      ORDER BY quotations.id ${sortOrder}
+      ORDER BY quotations.id DESC
+
 
       LIMIT $1 OFFSET $2
     `;
