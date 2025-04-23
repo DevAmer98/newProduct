@@ -179,23 +179,43 @@ router.post('/quotations', async (req, res) => {
 });
 
 
-
 router.get('/quotations', async (req, res) => {
   const client = await pool.connect();
   try {
     const limit = Math.min(parseInt(req.query.limit || '10', 10), 50);
     const page = Math.max(parseInt(req.query.page || '1', 10), 1);
-    const query = req.query.query || '';
+    const query = `%${req.query.query || ''}%`;
     const status = req.query.status || 'all';
     const offset = (page - 1) * limit;
 
-    let filterCondition = 'TRUE';
-    const baseQueryParams = [limit, offset, `%${query}%`];
+    const hasStatus = status !== 'all';
+    const countParams = hasStatus ? [query, status] : [query];
+    const countCondition = hasStatus
+      ? `(quotations.status = $2 OR quotations.manageraccept = $2)`
+      : 'TRUE';
 
-    if (status !== 'all') {
-      filterCondition = `(quotations.status = $4 OR quotations.manageraccept = $4)`;
-      baseQueryParams.push(status);
-    }
+    // COUNT query
+    const countQuery = `
+      SELECT COUNT(*) AS count
+      FROM quotations
+      JOIN clients ON quotations.client_id = clients.id
+      WHERE (clients.client_name ILIKE $1 OR clients.company_name ILIKE $1)
+      AND ${countCondition}
+    `;
+
+    const countResult = await executeWithRetry(() =>
+      client.query(countQuery, countParams)
+    );
+    const totalCount = parseInt(countResult.rows[0].count, 10);
+
+    // Build pagination query
+    const baseParams = hasStatus
+      ? [limit, offset, query, status]
+      : [limit, offset, query];
+
+    const filterCondition = hasStatus
+      ? `(quotations.status = $4 OR quotations.manageraccept = $4)`
+      : 'TRUE';
 
     const baseQuery = `
       SELECT 
@@ -218,14 +238,11 @@ router.get('/quotations', async (req, res) => {
       LIMIT $1 OFFSET $2
     `;
 
-    const quotationsResult = await executeWithRetry(async () => {
+    const quotationsResult = await executeWithRetry(() =>
       client.query(baseQuery, baseParams)
-    });
+    );
 
     const orders = quotationsResult.rows;
-    const totalCount = orders.length;
-
-
 
     return res.status(200).json({
       orders,
@@ -241,7 +258,8 @@ router.get('/quotations', async (req, res) => {
     });
   } finally {
     client.release();
-  } 
+  }
 });
+
 
 export default router;
