@@ -138,7 +138,6 @@ router.post('/orders', async (req, res) => {
     client.release();
   }
 });
-
 // GET endpoint to fetch orders
 router.get('/orders', async (req, res) => {
   const client = await pool.connect();
@@ -150,13 +149,31 @@ router.get('/orders', async (req, res) => {
     const offset = (page - 1) * limit;
 
     let filterCondition = 'TRUE';
-    const baseQueryParams = [limit, offset, `%${query}%`];
+    const queryParams = [`%${query}%`]; // start from 1-based for count query
+    let statusParamIndex = 2;
 
     if (status !== 'all') {
-      filterCondition = `(orders.status = $4 OR orders.manageraccept = $4)`;
-      baseQueryParams.push(status);
+      filterCondition = `(orders.status = $2 OR orders.manageraccept = $2)`;
+      queryParams.push(status);
+      statusParamIndex = 3;
     }
 
+    // COUNT query
+    const countQuery = `
+      SELECT COUNT(*) AS count
+      FROM orders
+      JOIN clients ON orders.client_id = clients.id
+      WHERE (clients.client_name ILIKE $1 OR clients.company_name ILIKE $1)
+      AND ${filterCondition}
+    `;
+
+    const countResult = await executeWithRetry(async () => {
+      return await client.query(countQuery, queryParams);
+    });
+
+    const totalCount = parseInt(countResult.rows[0].count, 10);
+
+    // Paginated orders query
     const baseQuery = `
       SELECT 
         orders.*, 
@@ -178,12 +195,14 @@ router.get('/orders', async (req, res) => {
       LIMIT $1 OFFSET $2
     `;
 
+    const baseQueryParams = [limit, offset, `%${query}%`];
+    if (status !== 'all') baseQueryParams.push(status);
+
     const ordersResult = await executeWithRetry(async () => {
-      return await client.query(countQuery, baseQueryParams.slice(2)); // Use same query + status
+      return await client.query(baseQuery, baseQueryParams);
     });
 
     const orders = ordersResult.rows;
-    const totalCount = orders.length;
 
     return res.status(200).json({
       orders,
