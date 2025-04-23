@@ -246,7 +246,7 @@ router.get('/quotations/salesRep', async (req, res) => {
       JOIN clients ON quotations.client_id = clients.id
       WHERE quotations.username = $4 AND 
             (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
-ORDER BY quotations.id::integer DESC
+ORDER BY quotations.created_at DESC
       LIMIT $1 OFFSET $2
     `;
 
