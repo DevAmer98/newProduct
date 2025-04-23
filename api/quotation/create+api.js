@@ -177,6 +177,9 @@ router.post('/quotations', async (req, res) => {
     client.release(); // Release the client back to the pool
   }
 });
+
+
+
 router.get('/quotations', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -216,11 +219,13 @@ router.get('/quotations', async (req, res) => {
     `;
 
     const quotationsResult = await executeWithRetry(async () => {
-      return await client.query(baseQuery, baseQueryParams);
+      client.query(baseQuery, baseParams)
     });
 
     const orders = quotationsResult.rows;
     const totalCount = orders.length;
+
+
 
     return res.status(200).json({
       orders,
@@ -236,7 +241,7 @@ router.get('/quotations', async (req, res) => {
     });
   } finally {
     client.release();
-  }
+  } 
 });
 
 export default router;
