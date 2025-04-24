@@ -56,7 +56,6 @@ app.use('/api', clientApi);
 app.use('/api', singleClientApi);
 app.use('/api', orderApi);
 app.use('/api', singleOrderApi);
-app.use('/api', singleQuotationApi);
 app.use('/api', quotationApi);
 app.use('/api/order', supervisorAcceptOrderApi); // Mount under /api/order
 app.use('/api/order', storekeeperAcceptOrderApi);
@@ -74,6 +73,8 @@ app.use('/api', acceptedSupervisorQoutationApi);
 app.use('/api', acceptedStorekeeperQoutationApi);
 app.use('/api', acceptedManagerQoutationApi);
 app.use('/api', deliverdApi);
+app.use('/api', singleQuotationApi);
+
 
 // New endpoint to generate and serve PDFs
 app.get('/api/quotation/pdf/:quotationId', async (req, res) => {
