@@ -214,7 +214,7 @@ router.get('/orders', async (req, res) => {
       orders,
       totalCount,
       currentPage: page,
-      totalPages: Math.ceil(totalCount / limit),
+      totalPages: Math.ceil(totalCount / limit), 
     });
   } catch (error) {
     console.error('Error fetching orders:', error);
@@ -227,95 +227,4 @@ router.get('/orders', async (req, res) => {
   }
 });
 
-
-
-
-
-
-router.get('/orders/supervisor', async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const limit = parseInt(req.query.limit || '10', 10);
-    const page = parseInt(req.query.page || '1', 10);
-    const query = `%${req.query.query || ''}%`;
-    const status = req.query.status || 'all';
-    const offset = (page - 1) * limit;
-
-    const hasStatus = status !== 'all';
-
-    // Build filters
-    let filterCondition = 'TRUE';
-    if (hasStatus) {
-      filterCondition = `(orders.status = $2 OR orders.supervisoraccept = $2)`;
-    }
-
-    // COUNT query
-    const countParams = hasStatus ? [query, status] : [query];
-    const countQuery = `
-      SELECT COUNT(*) AS count
-      FROM orders
-      JOIN clients ON orders.client_id = clients.id
-      WHERE (clients.client_name ILIKE $1 OR clients.company_name ILIKE $1)
-      AND ${filterCondition}
-    `;
-
-    const countResult = await executeWithRetry(() =>
-      client.query(countQuery, countParams)
-    );
-    const totalCount = parseInt(countResult.rows[0].count, 10);
-
-    // Paginated query
-    const baseParams = hasStatus
-      ? [limit, offset, query, status]
-      : [limit, offset, query];
-
-    const statusIndex = hasStatus ? 4 : null;
-
-    const paginatedFilterCondition = hasStatus
-      ? `(orders.status = $4 OR orders.supervisoraccept = $4)`
-      : 'TRUE';
-
-    const baseQuery = `
-      SELECT 
-        orders.*, 
-        clients.client_name AS client_name,
-        clients.phone_number AS client_phone,
-        clients.company_name AS client_company,
-        clients.branch_number AS client_branch,
-        clients.tax_number AS client_tax,
-        clients.latitude AS client_latitude,
-        clients.longitude AS client_longitude,
-        clients.street AS client_street,
-        clients.city AS client_city,
-        clients.region AS client_region
-      FROM orders
-      JOIN clients ON orders.client_id = clients.id
-      WHERE (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
-      AND ${paginatedFilterCondition}
-      ORDER BY orders.created_at DESC
-      LIMIT $1 OFFSET $2
-    `;
-
-    const ordersResult = await executeWithRetry(() =>
-      client.query(baseQuery, baseParams)
-    );
-
-    const orders = ordersResult.rows;
-
-    res.status(200).json({
-      orders,
-      totalCount,
-      currentPage: page,
-      totalPages: Math.ceil(totalCount / limit),
-    });
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    res.status(500).json({
-      error: error.message || 'Error fetching orders',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-    });
-  } finally {
-    client.release();
-  }
-});
 export default router;

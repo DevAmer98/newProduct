@@ -75,7 +75,7 @@ router.get('/orders/storekeeperaccept', async (req, res) => {
       JOIN clients ON orders.client_id = clients.id
       WHERE (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
       AND ${filterCondition}
-      ORDER BY orders.delivery_date DESC
+      ORDER BY orders.created_at DESC
       LIMIT $1 OFFSET $2
     `;
 
