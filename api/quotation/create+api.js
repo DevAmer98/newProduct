@@ -262,7 +262,7 @@ router.get('/quotations', async (req, res) => {
 });
 
 
-router.get('/', async (req, res) => {
+router.get('/quotations/supervisor', async (req, res) => {
   const client = await pool.connect();
   try {
     const limit = Math.min(parseInt(req.query.limit || '10', 10), 50);
