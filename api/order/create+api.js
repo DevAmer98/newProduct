@@ -272,7 +272,7 @@ router.get('/orders/supervisor', async (req, res) => {
     const statusIndex = hasStatus ? 4 : null;
 
     const paginatedFilterCondition = hasStatus
-      ? `(orders.status = $4 OR orders.manageraccept = $4)`
+      ? `(orders.status = $4 OR orders.supervisoraccept = $4)`
       : 'TRUE';
 
     const baseQuery = `
