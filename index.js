@@ -44,18 +44,11 @@ app.use(express.json());
 // Mount the API routes under /api
 app.use('/api', managerApi);
 app.use('/api', supervisorApi);
-app.use('/api', singleSupervisorApi);
-app.use('/api', singleManagerApi);
 app.use('/api', storekeeperApi);
-app.use('/api', singleStorekeeperApi);
 app.use('/api', salesApi);
-app.use('/api', singleSalesApi);
 app.use('/api', driverApi);
-app.use('/api', singleDriverApi);
 app.use('/api', clientApi);
-app.use('/api', singleClientApi);
 app.use('/api', orderApi);
-app.use('/api', singleOrderApi);
 app.use('/api', quotationApi);
 app.use('/api/order', supervisorAcceptOrderApi); // Mount under /api/order
 app.use('/api/order', storekeeperAcceptOrderApi);
@@ -74,6 +67,20 @@ app.use('/api', acceptedStorekeeperQoutationApi);
 app.use('/api', acceptedManagerQoutationApi);
 app.use('/api', deliverdApi);
 app.use('/api', singleQuotationApi);
+app.use('/api', singleManagerApi);
+app.use('/api', singleOrderApi);
+app.use('/api', singleClientApi);
+app.use('/api', singleDriverApi);
+app.use('/api', singleSalesApi);
+app.use('/api', singleStorekeeperApi);
+app.use('/api', singleSupervisorApi);
+
+
+
+
+
+
+
 
 
 // New endpoint to generate and serve PDFs
