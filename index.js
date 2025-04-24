@@ -32,7 +32,8 @@ import acceptedStorekeeperQoutationApi from './api/acceptStorekeeperQuotation/[i
 import acceptedManagerQoutationApi from './api/acceptManagerQuotation/[id]+api.js';
 import supervisorOrderApi from './api/order/create+api.js'
 import deliverdApi from './api/delivered/[id]+api.js';
-import { servePDF } from './api/quotation/pdf.js'; // Import the servePDF function
+import { servePDF } from './api/quotation/pdf.js'; 
+import supervisorQuotationApi from './api/quotation/create+api.js'
 
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/order', storekeeperAcceptOrderApi);
 app.use('/api/order', salesOrderApi);
 app.use('/api/order/superviosr', supervisorOrderApi);
 app.use('/api/quotation', salesQuotationApi);
+app.use('/api/quotation/supervisor', supervisorQuotationApi);
 app.use('/api/quotation', supervisorAcceptQuotationApi); // Mount under /api/order
 app.use('/api/quotation', storekeeperAcceptQuotationApi);
 app.use('/api', getFcmApi);
