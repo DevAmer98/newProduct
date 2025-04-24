@@ -64,7 +64,7 @@ app.use('/api/order', storekeeperAcceptOrderApi);
 app.use('/api/order', salesOrderApi);
 app.use('/api/order/supervisor', supervisorOrderApi);
 app.use('/api/quotation', salesQuotationApi);
-app.use('/api/quotation/supervisor', supervisorQuotationApi);
+app.use('/api/quotations/supervisor', supervisorQuotationApi);
 app.use('/api/quotation', supervisorAcceptQuotationApi); // Mount under /api/order
 app.use('/api/quotation', storekeeperAcceptQuotationApi);
 app.use('/api', getFcmApi);
