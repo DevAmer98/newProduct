@@ -114,8 +114,6 @@ router.put('/orders/:id', async (req, res) => {
       notes,
       products,
       status = 'not Delivered',
-      storekeeperaccept = 'pending',
-      supervisoraccept = 'pending',
       total_price,
     } = body;
 
@@ -129,13 +127,14 @@ router.put('/orders/:id', async (req, res) => {
           delivery_type = $3,
           notes = $4,
           status = $5,
-          storekeeperaccept = $6,
-          supervisoraccept = $7,
+          storekeeperaccept = 'pending',
+          supervisoraccept = 'pending',
+          manageraccept = 'pending',
           updated_at = CURRENT_TIMESTAMP,
-          actual_delivery_date = COALESCE($8, actual_delivery_date),
-          storekeeper_notes = $9,
-          total_price = $10
-      WHERE id = $11
+          actual_delivery_date = COALESCE($6, actual_delivery_date),
+          storekeeper_notes = $7,
+          total_price = $8
+      WHERE id = $9
     `;
 
     await executeWithRetry(async () => {
@@ -146,8 +145,6 @@ router.put('/orders/:id', async (req, res) => {
           delivery_type,
           notes || null,
           status,
-          storekeeperaccept,
-          supervisoraccept,
           actualDeliveryDate,
           body.storekeeper_notes || null,
           total_price,
