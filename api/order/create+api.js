@@ -228,10 +228,6 @@ router.get('/orders', async (req, res) => {
 });
 
 
-
-
-
-
 router.get('/orders/supervisor', async (req, res) => {
   const client = await pool.connect();
   try {
