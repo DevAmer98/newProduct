@@ -144,11 +144,15 @@ router.put('/delivered/:id', async (req, res) => {
     const updateOrderQuery = `
       UPDATE orders 
       SET status = 'Delivered',
+      actual_delivery_date = $2,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `;
+
+
+    const actualDeliveryDate = new Date().toISOString(); 
     await executeWithRetry(async () => {
-      return await withTimeout(pool.query(updateOrderQuery, [id]), 10000); // 10-second timeout
+      return await withTimeout(pool.query(updateOrderQuery, [id, actualDeliveryDate]), 10000); // 10-second timeout
     });
 
     await sendNotificationToSupervisor(`تم توصيل الطلب ${id}`);
