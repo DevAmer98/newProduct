@@ -120,7 +120,7 @@ router.put('/orders/:id', async (req, res) => {
     } = body;
 
     // Set `actual_delivery_date` if the status is "delivered"
-    const actualDeliveryDate = status.toLowerCase() === 'delivered' ? new Date().toISOString() : null;
+    const actualDeliveryDate = status === 'Delivered' ? new Date().toISOString() : null;
 
 
     const updateOrderQuery = `
