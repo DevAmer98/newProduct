@@ -46,7 +46,7 @@ router.get('/orders/supervisorAccept', async (req, res) => {
     const query = `%${req.query.query || ''}%`;
     const status = req.query.status || 'all';
     const offset = (page - 1) * limit;
-
+ 
     const hasStatus = status !== 'all';
 
     // Filter condition shared across both queries

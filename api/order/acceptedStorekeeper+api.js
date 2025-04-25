@@ -41,17 +41,36 @@ router.get('/orders/storekeeperaccept', async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const limit = parseInt(url.searchParams.get('limit') || '10', 10);
     const page = parseInt(url.searchParams.get('page') || '1', 10);
-    const query = url.searchParams.get('query') || '';
+    const query = `%${url.searchParams.get('query') || ''}%`;
     const status = url.searchParams.get('status') || 'all';
     const offset = (page - 1) * limit;
 
-    let filterCondition = "orders.storekeeperaccept = 'accepted'";
-    const baseQueryParams = [limit, offset, `%${query}%`];
+    const hasStatus = status !== 'all';
 
-    if (status !== 'all') {
-      filterCondition += ` AND orders.status = $4`;
-      baseQueryParams.push(status); // Ensure status is included if not 'all'
+    // Shared filtering logic
+    let filterCondition = `orders.storekeeperaccept = 'accepted'`;
+    if (hasStatus) {
+      filterCondition += ` AND orders.status = $2`;
     }
+
+    // Count query
+    const countQuery = `
+      SELECT COUNT(*) AS count
+      FROM orders
+      JOIN clients ON orders.client_id = clients.id
+      WHERE (clients.client_name ILIKE $1 OR clients.company_name ILIKE $1)
+      AND ${filterCondition}
+    `;
+    const countParams = hasStatus ? [query, status] : [query];
+    const countResult = await executeWithRetry(() =>
+      client.query(countQuery, countParams)
+    );
+    const totalCount = parseInt(countResult.rows[0].count, 10);
+
+    // Paginated query
+    const paginatedFilterCondition = hasStatus
+      ? `orders.storekeeperaccept = 'accepted' AND orders.status = $4`
+      : `orders.storekeeperaccept = 'accepted'`;
 
     const baseQuery = `
       SELECT 
@@ -74,27 +93,24 @@ router.get('/orders/storekeeperaccept', async (req, res) => {
       FROM orders
       JOIN clients ON orders.client_id = clients.id
       WHERE (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
-      AND ${filterCondition}
+      AND ${paginatedFilterCondition}
       ORDER BY orders.created_at DESC
       LIMIT $1 OFFSET $2
     `;
+    const baseParams = hasStatus
+      ? [limit, offset, query, status]
+      : [limit, offset, query];
 
-    console.log('Executing SQL Query:', baseQuery);
-    console.log('With Parameters:', baseQueryParams);
-
-    const ordersResult = await executeWithRetry(async () => {
-      return await withTimeout(client.query(baseQuery, baseQueryParams), 10000); // 10-second timeout
-    });
-
-    const totalCount = ordersResult.rowCount;
-    const hasMore = page * limit < totalCount;
+    const ordersResult = await executeWithRetry(() =>
+      client.query(baseQuery, baseParams)
+    );
 
     res.status(200).json({
       orders: ordersResult.rows,
-      hasMore,
       totalCount,
       currentPage: page,
       totalPages: Math.ceil(totalCount / limit),
+      hasMore: page < Math.ceil(totalCount / limit),
     });
   } catch (error) {
     console.error('Error fetching orders:', error);
