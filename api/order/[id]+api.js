@@ -97,8 +97,8 @@ router.get('/orders/:id', async (req, res) => {
   }
 });
 
-// PUT /api/orders/:id
-router.put('/orders/:id', async (req, res) => {
+
+/*router.put('/orders/:id', async (req, res) => {
   const { id } = req.params;
   const body = req.body;
 
@@ -189,7 +189,105 @@ router.put('/orders/:id', async (req, res) => {
       details: error.message,
     });
   }
+});*/
+
+
+// PUT /api/orders/:id
+router.put('/orders/:id', async (req, res) => {
+  const { id } = req.params;
+  const body = req.body;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Missing order ID' });
+  }
+
+  try {
+    const {
+      client_id,
+      delivery_date,
+      delivery_type,
+      notes,
+      products,
+      status = 'not Delivered',
+      storekeeperaccept = 'pending',
+      supervisoraccept = 'pending',
+      total_price,
+      storekeeper_notes,
+      actual_delivery_date, // ✅ Must be destructured here
+    } = body;
+
+    // ✅ Normalize and determine final actualDeliveryDate
+    const actualDeliveryDate =
+      actual_delivery_date || (status?.toLowerCase() === 'delivered' ? new Date().toISOString() : null);
+
+    // ✅ Double-check what is being passed (for debugging only)
+    console.log({ status, actualDeliveryDate });
+
+    const updateOrderQuery = `
+      UPDATE orders 
+      SET client_id = $1,
+          delivery_date = $2,
+          delivery_type = $3,
+          notes = $4,
+          status = $5,
+          storekeeperaccept = $6,
+          supervisoraccept = $7,
+          updated_at = CURRENT_TIMESTAMP,
+          actual_delivery_date = COALESCE($8, actual_delivery_date),
+          storekeeper_notes = $9,
+          total_price = $10
+      WHERE id = $11
+    `;
+
+    await executeWithRetry(async () => {
+      return await withTimeout(
+        pool.query(updateOrderQuery, [
+          client_id,
+          delivery_date,
+          delivery_type,
+          notes || null,
+          status,
+          storekeeperaccept,
+          supervisoraccept,
+          actualDeliveryDate, // ✅ Must be here in the right position
+          storekeeper_notes || null,
+          total_price,
+          id,
+        ]),
+        10000
+      );
+    });
+
+    // Optional product update logic
+    if (products && products.length > 0) {
+      const deleteProductsQuery = `DELETE FROM order_products WHERE order_id = $1`;
+      await executeWithRetry(() => withTimeout(pool.query(deleteProductsQuery, [id]), 10000));
+
+      for (const product of products) {
+        const { section, type, quantity, description, price } = product;
+        await executeWithRetry(() =>
+          withTimeout(
+            pool.query(
+              `INSERT INTO order_products (order_id, section, type, description, quantity, price)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [id, section, type, description, quantity, price]
+            ),
+            10000
+          )
+        );
+      }
+    }
+
+    return res.status(200).json({ message: 'Order and products updated successfully' });
+  } catch (error) {
+    console.error('Database error:', error);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      details: error.message,
+    });
+  }
 });
+
 
 // DELETE /api/orders/:id
 router.delete('/orders/:id', async (req, res) => {
