@@ -117,6 +117,7 @@ router.put('/orders/:id', async (req, res) => {
       storekeeperaccept = 'pending',
       supervisoraccept = 'pending',
       total_price,
+      actual_delivery_date, // ✅ must be here before using below
     } = body;
 
     // Set `actual_delivery_date` if the status is "delivered"
