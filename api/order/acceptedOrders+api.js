@@ -1,5 +1,3 @@
-
-
 import express from 'express';
 import pkg from 'pg'; // New
 const { Pool } = pkg; // Destructure Pool
@@ -35,28 +33,50 @@ const withTimeout = (promise, timeout) => {
   return Promise.race([promise, timeoutPromise]);
 };
 
-// GET /api/orders
+
+
+
+
+// GET /api/orders/supervisorAccept
 router.get('/orders/supervisorAccept', async (req, res) => {
   const client = await pool.connect();
   try {
     const limit = parseInt(req.query.limit || '10', 10);
     const page = parseInt(req.query.page || '1', 10);
-    const query = req.query.query || '';
+    const query = `%${req.query.query || ''}%`;
     const status = req.query.status || 'all';
     const offset = (page - 1) * limit;
 
-    let filterCondition = "orders.supervisoraccept = 'accepted'";
-    const baseQueryParams = [limit, offset, `%${query}%`];
+    const hasStatus = status !== 'all';
 
-    // Apply specific acceptance filters if not 'all'
-    if (status !== 'all') {
-      filterCondition += ` AND orders.storekeeperaccept = $4`;
-      baseQueryParams.push(status); // $4 is the status for 'accepted' or 'pending'
+    // Filter condition shared across both queries
+    let filterCondition = `orders.supervisoraccept = 'accepted'`;
+    if (hasStatus) {
+      filterCondition += ` AND orders.storekeeperaccept = $2`;
     }
+
+    // Count query
+    const countQuery = `
+      SELECT COUNT(*) AS count
+      FROM orders
+      JOIN clients ON orders.client_id = clients.id
+      WHERE (clients.client_name ILIKE $1 OR clients.company_name ILIKE $1)
+      AND ${filterCondition}
+    `;
+    const countParams = hasStatus ? [query, status] : [query];
+    const countResult = await executeWithRetry(() =>
+      client.query(countQuery, countParams)
+    );
+    const totalCount = parseInt(countResult.rows[0].count, 10);
+
+    // Paginated query
+    const paginatedFilterCondition = hasStatus
+      ? `orders.supervisoraccept = 'accepted' AND orders.storekeeperaccept = $4`
+      : `orders.supervisoraccept = 'accepted'`;
 
     const baseQuery = `
       SELECT 
-        orders.*, 
+        orders.*,  
         clients.client_name AS client_name,
         clients.phone_number AS client_phone,
         clients.company_name AS client_company,
@@ -75,27 +95,26 @@ router.get('/orders/supervisorAccept', async (req, res) => {
       FROM orders
       JOIN clients ON orders.client_id = clients.id
       WHERE (clients.client_name ILIKE $3 OR clients.company_name ILIKE $3)
-      AND ${filterCondition}
-      ORDER BY orders.delivery_date DESC
+      AND ${paginatedFilterCondition}
+      ORDER BY orders.created_at DESC
       LIMIT $1 OFFSET $2
     `;
+    const baseParams = hasStatus
+      ? [limit, offset, query, status]
+      : [limit, offset, query];
 
-    console.log('Final SQL Query:', baseQuery);
-    console.log('Parameters:', baseQueryParams);
+    const ordersResult = await executeWithRetry(() =>
+      client.query(baseQuery, baseParams)
+    );
 
-    const ordersResult = await executeWithRetry(async () => {
-      return await withTimeout(client.query(baseQuery, baseQueryParams), 10000); // 10-second timeout
-    });
-
-    const totalCount = ordersResult.rowCount;
-    const hasMore = page * limit < totalCount;
+    const orders = ordersResult.rows;
 
     return res.status(200).json({
-      orders: ordersResult.rows,
-      hasMore,
+      orders,
       totalCount,
       currentPage: page,
       totalPages: Math.ceil(totalCount / limit),
+      hasMore: page < Math.ceil(totalCount / limit),
     });
   } catch (error) {
     console.error('Error fetching orders:', error);
