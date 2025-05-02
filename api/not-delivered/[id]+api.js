@@ -147,9 +147,9 @@ router.put('/not-delivered/:id', async (req, res) => {
     SET status = 'not Delivered',
         driver_notes = $1,
         updated_at = CURRENT_TIMESTAMP,
-         supervisoraccept = pending,
-    manageraccept = pending,
-    storekeeperaccept = pending
+         supervisoraccept = 'pending',
+      manageraccept = 'pending',
+      storekeeperaccept = 'pending'
     WHERE id = $2
     RETURNING *
   `;
