@@ -135,6 +135,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
 
 router.put('/not-delivered/:id', async (req, res) => {
   const { id } = req.params;
+  const { driver_notes } = req.body;
 
   if (!id) {
     return res.status(400).json({ error: 'Missing order ID' });
