@@ -142,15 +142,18 @@ router.put('/not-delivered/:id', async (req, res) => {
 
   try {
     const updateOrderQuery = `
-      UPDATE orders 
-      SET status = 'not Delivered',
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-    `;
+    UPDATE orders 
+    SET status = 'not Delivered',
+        driver_notes = $1,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $2
+    RETURNING *
+  `;
+
 
 
     await executeWithRetry(async () => {
-      return await withTimeout(pool.query(updateOrderQuery, [id]), 10000); // 10-second timeout
+      return await withTimeout(pool.query(updateOrderQuery, [driver_notes, id]), 10000); // 10-second timeout
     });
 
     await sendNotificationToSupervisor(`لم يتم توصيل الطلب   ${id}`);
