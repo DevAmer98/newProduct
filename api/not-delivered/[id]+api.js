@@ -133,7 +133,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
   }
 }
 
-router.put('/delivered/:id', async (req, res) => {
+router.put('/not-delivered/:id', async (req, res) => {
   const { id } = req.params;
 
   if (!id) {
