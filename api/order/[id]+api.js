@@ -133,9 +133,10 @@ router.put('/orders/:id', async (req, res) => {
           updated_at = CURRENT_TIMESTAMP,
           actual_delivery_date = COALESCE($6, actual_delivery_date),
           storekeeper_notes = $7,
-          total_price = $8
-      WHERE id = $9
-    `;
+          driver_notes = $8,
+          total_price = $9
+      WHERE id = $10
+    `;s
 
     await executeWithRetry(async () => {
       return await withTimeout(
@@ -147,6 +148,7 @@ router.put('/orders/:id', async (req, res) => {
           status,
           actualDeliveryDate,
           body.storekeeper_notes || null,
+          body.driver_notes || null,
           total_price,
           id,
         ]),
