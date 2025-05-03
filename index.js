@@ -34,7 +34,7 @@ import supervisorOrderApi from './api/order/create+api.js'
 import deliverdApi from './api/delivered/[id]+api.js';
 import notDeliverdApi from './api/not-delivered/[id]+api.js';
 import { servePDF } from './api/quotation/pdf.js'; 
-import { servePDF } from './api/order/pdf.js'; 
+import { serveOrderPDF } from './api/order/pdf.js'; 
 
 import quotationSupervisorApi from './api/quotation/supervisor+api.js'
 
@@ -96,7 +96,7 @@ app.get('/api/quotation/pdf/:quotationId', async (req, res) => {
 
 app.get('/api/order/pdf/:orderId', async (req, res) => {
   const { orderId } = req.params;
-  await servePDF(orderId, res);
+  await serveOrderPDF(orderId, res);
 });
 // Error-handling middleware
 app.use((err, req, res, next) => {

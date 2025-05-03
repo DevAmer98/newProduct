@@ -164,13 +164,13 @@ async function fetchOrderDataFromDatabase(orderId) {
     console.error('Error fetching order data:', error);
     throw new Error('Failed to fetch order data');
   }
-}
+} 
 /**
  * Serves the PDF for a given order ID.
  * @param {string} orderId - The ID of the order.
  * @param {Object} res - The Express response object.
  */
-export async function servePDF(orderId, res) {
+export async function serveOrderPDF(orderId, res) {
   try {
     // Fetch order data from the database
     const orderData = await fetchOrderDataFromDatabase(orderId);
