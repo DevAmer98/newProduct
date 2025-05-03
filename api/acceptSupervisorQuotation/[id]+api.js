@@ -162,7 +162,7 @@ router.put('/acceptSupervisorQuotation/:id', async (req, res) => {
       UPDATE quotations 
       SET supervisoraccept = 'accepted',
           supervisor_id = $2,
-          updated_at = CURRENT_TIMESTAMP
+          updated_at = CURRENT_TIMESTAMP 
       WHERE id = $1
     `;
     await executeWithRetry(async () => {
