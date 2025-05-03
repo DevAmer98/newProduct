@@ -136,7 +136,7 @@ router.put('/orders/:id', async (req, res) => {
           driver_notes = $8,
           total_price = $9
       WHERE id = $10
-    `;s
+    `;
 
     await executeWithRetry(async () => {
       return await withTimeout(
