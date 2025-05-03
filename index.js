@@ -34,6 +34,8 @@ import supervisorOrderApi from './api/order/create+api.js'
 import deliverdApi from './api/delivered/[id]+api.js';
 import notDeliverdApi from './api/not-delivered/[id]+api.js';
 import { servePDF } from './api/quotation/pdf.js'; 
+import { servePDF } from './api/order/pdf.js'; 
+
 import quotationSupervisorApi from './api/quotation/supervisor+api.js'
 
 const app = express();
@@ -91,6 +93,11 @@ app.get('/api/quotation/pdf/:quotationId', async (req, res) => {
   await servePDF(quotationId, res);
 });
 
+
+app.get('/api/order/pdf/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+  await servePDF(orderId, res);
+});
 // Error-handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
