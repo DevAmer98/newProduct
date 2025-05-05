@@ -173,37 +173,7 @@ router.post('/orders/salesRep', async (req, res) => {
   }
 });
 
-// Improved executeWithRetry function (just a suggestion, implement according to your needs)
-async function executeWithRetry(operation, maxRetries = 3, delay = 1000) {
-  let lastError;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      console.log(`Attempt ${attempt} failed: ${error.message}`);
-      lastError = error;
-      
-      // Only retry on specific errors, e.g., connection issues
-      if (!isRetryableError(error) || attempt === maxRetries) {
-        throw error;
-      }
-      
-      // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  
-  throw lastError;
-}
 
-// Helper function to determine if an error is retryable
-function isRetryableError(error) {
-  // Define which errors should trigger a retry
-  // For example, connection timeouts, but not validation errors
-  const retryableCodes = ['08006', '08001', '08004', '57P01']; 
-  return retryableCodes.includes(error.code);
-}
 
 // GET endpoint to fetch orders
 router.get('/orders/salesRep', async (req, res) => {
