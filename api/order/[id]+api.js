@@ -120,6 +120,30 @@ router.put('/orders/:id', async (req, res) => {
     // Set `actual_delivery_date` if the status is "delivered"
     const actualDeliveryDate = status === 'delivered' ? new Date().toISOString() : null;
 
+
+
+      // Calculate totals based on products
+      let totalPrice = 0;
+      let totalVat = 0;
+      let totalSubtotal = 0;
+
+      if (products && products.length > 0) {
+        for (const product of products) {
+          const { price, quantity } = product;
+          const numericPrice = parseFloat(price) || 0;
+          const numericQuantity = parseFloat(quantity) || 0;
+
+          const totalPriceForProduct = numericPrice * numericQuantity; // Total price for the quantity
+          const vat = totalPriceForProduct * 0.15; // VAT is 15% of the total price for the quantity
+          const subtotal = totalPriceForProduct + vat; // Subtotal is total price + VAT
+
+          totalPrice += totalPriceForProduct;
+          totalVat += vat;
+          totalSubtotal += subtotal;
+        }
+      }
+
+
     const updateOrderQuery = `
       UPDATE orders 
       SET client_id = $1,
@@ -135,7 +159,9 @@ router.put('/orders/:id', async (req, res) => {
           storekeeper_notes = $7,
           driver_notes = $8,
           total_price = $9
-      WHERE id = $10
+            total_vat = $10,
+            total_subtotal = $11,
+      WHERE id = $12
     `;
 
     await executeWithRetry(async () => {
@@ -149,7 +175,9 @@ router.put('/orders/:id', async (req, res) => {
           actualDeliveryDate,
           body.storekeeper_notes || null,
           body.driver_notes || null,
-          total_price,
+          totalPrice,
+          totalVat,
+          totalSubtotal,
           id,
         ]),
         10000 // 10-second timeout
@@ -163,13 +191,22 @@ router.put('/orders/:id', async (req, res) => {
       });
 
       for (const product of products) {
-        const { section, type, quantity, description,price } = product;
+        const { section, type, quantity, description, price } = product;
+
+          // Calculate VAT and subtotal for each product
+          const numericPrice = parseFloat(price) || 0;
+          const numericQuantity = parseFloat(quantity) || 0;
+
+          const totalPriceForProduct = numericPrice * numericQuantity; // Total price for the quantity
+          const vat = totalPriceForProduct * 0.15; // VAT is 15% of the total price for the quantity
+          const subtotal = totalPriceForProduct + vat; // Subtotal is total price + VAT
+
         await executeWithRetry(async () => {
           return await withTimeout(
             pool.query(
-              `INSERT INTO order_products (order_id, section, type, description, quantity,price) 
+              `INSERT INTO order_products (order_id, section, type, description, quantity, price, vat, subtotal) 
                VALUES ($1, $2, $3, $4, $5, $6)`,
-              [id, section, type, description, quantity, price]
+              [id, section, type, description, quantity, price, vat, subtotal]
             ),
             10000 // 10-second timeout
           );

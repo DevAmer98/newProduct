@@ -193,7 +193,7 @@ router.put('/quotations/:id', async (req, res) => {
         UPDATE quotations 
         SET client_id = $1,
             delivery_date = $2,
-            delivery_type = $3,
+            delivery_type = $3, 
             notes = $4,
             status = $5,
             storekeeperaccept = $6,
