@@ -80,8 +80,8 @@ router.post('/orders', async (req, res) => {
       const customId = await generateCustomId(client);
 
       const orderPromise = client.query(
-        `INSERT INTO orders (client_id, delivery_date, delivery_type, notes, status, storekeeperaccept, supervisoraccept, manageraccept, actual_delivery_date, total_price, custom_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+        `INSERT INTO orders (client_id, delivery_date, delivery_type, notes, status, storekeeperaccept, supervisoraccept, manageraccept, actual_delivery_date, total_price,total_vat, total_subtotal, custom_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
         [
           client_id,
           formattedDate,
@@ -92,7 +92,9 @@ router.post('/orders', async (req, res) => {
           supervisoraccept,
           manageraccept,
           null,
-          0,
+          0, // total_price (initial value)
+          0, // total_vat (initial value)
+          0, // total_subtotal (initial value)
           customId,
         ]
       );
@@ -101,6 +103,8 @@ router.post('/orders', async (req, res) => {
       const orderId = orderResult.rows[0].id;
 
       let totalPrice = 0;
+      let totalVat = 0;
+      let totalSubtotal = 0;
 
       for (const product of products) {
         const { section, type, description, quantity, price } = product;
@@ -117,18 +121,48 @@ router.post('/orders', async (req, res) => {
           return res.status(400).json({ error: 'Invalid price format' });
         }
 
-        totalPrice += numericPrice;
+
+        
+        // Calculate VAT and subtotal for the current product row
+        const totalPriceForProduct = numericPrice * quantity; // Total price for the quantity
+        const vat = totalPriceForProduct * 0.15; // VAT is 15% of the total price for the quantity
+        const subtotal = totalPriceForProduct + vat; // Subtotal is total price + VAT
+
+        // Debugging: Log the values
+        console.log({
+          productId: product.id,
+          numericPrice,
+          quantity,
+          totalPriceForProduct,
+          vat,
+          subtotal,
+        });
+
+        // Update totals for the entire quotation
+        totalPrice += totalPriceForProduct; // Total price is sum of (price * quantity)
+        totalVat += vat; // Total VAT is sum of (VAT * quantity)
+        totalSubtotal += subtotal; // Total subtotal is sum of all subtotals
 
         await client.query(
-          `INSERT INTO order_products (order_id, section, type, description, quantity, price) 
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [orderId, section, type, description, quantity, numericPrice]
+          `INSERT INTO order_products (order_id, section, type, description, quantity, price, vat, subtotal) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [orderId, section, type, description, quantity, numericPrice,vat, subtotal]
         );
       }
 
-      await client.query(`UPDATE orders SET total_price = $1 WHERE id = $2`, [totalPrice, orderId]);
+      await client.query(`
+        UPDATE orders
+         SET total_price = $1, 
+             total_vat = $2, 
+             total_subtotal = $3 
+         WHERE id = $4`,
+         [totalPrice, totalVat, totalSubtotal, orderId]);
       await client.query('COMMIT');
-      return res.status(201).json({ orderId, customId, status: 'success', totalPrice });
+      return res.status(201).json({ orderId, customId, status: 'success',
+        totalPrice ,
+        totalVat,
+        totalSubtotal
+      });
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -269,7 +303,7 @@ router.get('/orders/supervisor', async (req, res) => {
 
     const paginatedFilterCondition = hasStatus
       ? `(orders.status = $4 OR orders.supervisoraccept = $4)`
-      : 'TRUE';
+      : 'TRUE'; 
 
     const baseQuery = `
       SELECT 

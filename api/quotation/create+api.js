@@ -163,7 +163,7 @@ router.post('/quotations', async (req, res) => {
       return res.status(201).json({
         quotationId,
         customId,
-        status: 'success',
+        status: 'success', 
         totalPrice,
         totalVat,
         totalSubtotal,
