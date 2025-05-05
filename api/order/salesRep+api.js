@@ -96,69 +96,114 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
 router.post('/orders/salesRep', async (req, res) => {
   const client = await pool.connect();
   try {
-    await executeWithRetry(async () => {
-      await client.query('BEGIN');
-      const { client_id, username, delivery_date, delivery_type, products, notes, status = 'not Delivered' } = req.body;
+    // Improved executeWithRetry function implementation
+    const result = await executeWithRetry(async () => {
+      try {
+        await client.query('BEGIN');
+        const { client_id, username, delivery_date, delivery_type, products, notes, status = 'not Delivered' } = req.body;
 
-      if (!client_id || !delivery_date || !delivery_type || !products || products.length === 0) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-
-      let formattedDate = moment(delivery_date).tz('UTC').format('YYYY-MM-DD HH:mm:ss');
-
-      // Generate custom ID
-      const customId = await generateCustomId(client);
-
-      const orderResult = await withTimeout(
-        client.query(
-          `INSERT INTO orders (client_id, username, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-          [client_id, username, formattedDate, delivery_type, notes || null, status,0, 0, 0, customId]
-        ),
-        10000 // 10-second timeout
-      );
-      const orderId = orderResult.rows[0].id;
-
-      let totalPrice = 0, totalVat = 0, totalSubtotal = 0;
-      for (const product of products) {
-        const { section, type, description, quantity, price } = product;
-        if (!section || !type || !quantity || !price) {
-          throw new Error('Missing product details or price');
+        if (!client_id || !delivery_date || !delivery_type || !products || products.length === 0) {
+          throw new Error('Missing required fields');
         }
-        const numericPrice = parseFloat(price);
-        if (isNaN(numericPrice)) { throw new Error('Invalid price format'); }
-        const vat = numericPrice * 0.15;
-        const subtotal = numericPrice + vat;
-        totalPrice += numericPrice * quantity;
-        totalVat += vat * quantity;
-        totalSubtotal += subtotal * quantity;
-        await client.query(
-          `INSERT INTO order_products (order_id, section, type, description, quantity, price, vat, subtotal)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [orderId, product.section, product.type, product.description, product.quantity, numericPrice, vat, subtotal]
+
+        let formattedDate = moment(delivery_date).tz('UTC').format('YYYY-MM-DD HH:mm:ss');
+
+        // Generate custom ID
+        const customId = await generateCustomId(client);
+
+        const orderResult = await withTimeout(
+          client.query(
+            `INSERT INTO orders (client_id, username, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+            [client_id, username, formattedDate, delivery_type, notes || null, status, 0, 0, 0, customId]
+          ),
+          10000 // 10-second timeout
         );
+        const orderId = orderResult.rows[0].id;
+
+        let totalPrice = 0, totalVat = 0, totalSubtotal = 0;
+        for (const product of products) {
+          const { section, type, description, quantity, price } = product;
+          if (!section || !type || !quantity || !price) {
+            throw new Error('Missing product details or price');
+          }
+          const numericPrice = parseFloat(price);
+          if (isNaN(numericPrice)) { throw new Error('Invalid price format'); }
+          const vat = numericPrice * 0.15;
+          const subtotal = numericPrice + vat;
+          totalPrice += numericPrice * quantity;
+          totalVat += vat * quantity;
+          totalSubtotal += subtotal * quantity;
+          await client.query(
+            `INSERT INTO order_products (order_id, section, type, description, quantity, price, vat, subtotal)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [orderId, product.section, product.type, product.description, product.quantity, numericPrice, vat, subtotal]
+          );
+        }
+
+        await client.query(`UPDATE orders SET total_price = $1, total_vat = $2, total_subtotal = $3 WHERE id = $4`, 
+          [totalPrice, totalVat, totalSubtotal, orderId]);
+        await client.query('COMMIT');
+
+        return {
+          orderId, 
+          customId, 
+          status: 'success',
+          totalPrice,
+          totalVat,
+          totalSubtotal
+        };
+      } catch (err) {
+        // Make sure we rollback on any error within this function
+        await client.query('ROLLBACK');
+        throw err; // Re-throw to be handled by executeWithRetry
       }
-
-      await client.query(`UPDATE orders SET total_price = $1, total_vat = $2, total_subtotal = $3 WHERE id = $4`, 
-        [totalPrice, totalVat, totalSubtotal, orderId]);
-      await client.query('COMMIT');
-
-      // Send notifications to supervisors
-      await sendNotificationToSupervisor(`تم إنشاء طلب جديد بالمعرف ${customId} وينتظر موافقتك.`, 'إشعار طلب جديد');
-
-      return res.status(201).json({ orderId, customId, status: 'success',  
-        totalPrice,
-        totalVat,
-        totalSubtotal });
     });
+    
+    // If we get here, the transaction succeeded
+    // Send notifications to supervisors
+    await sendNotificationToSupervisor(`تم إنشاء طلب جديد بالمعرف ${result.customId} وينتظر موافقتك.`, 'إشعار طلب جديد');
+    
+    return res.status(201).json(result);
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error('Error creating order:', error);
-    return res.status(500).json({ error: error.message || 'Error creating order' });
+    return res.status(400).json({ error: error.message || 'Error creating order' });
   } finally {
     client.release();
   }
 });
+
+// Improved executeWithRetry function (just a suggestion, implement according to your needs)
+async function executeWithRetry(operation, maxRetries = 3, delay = 1000) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      console.log(`Attempt ${attempt} failed: ${error.message}`);
+      lastError = error;
+      
+      // Only retry on specific errors, e.g., connection issues
+      if (!isRetryableError(error) || attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
+// Helper function to determine if an error is retryable
+function isRetryableError(error) {
+  // Define which errors should trigger a retry
+  // For example, connection timeouts, but not validation errors
+  const retryableCodes = ['08006', '08001', '08004', '57P01']; 
+  return retryableCodes.includes(error.code);
+}
 
 // GET endpoint to fetch orders
 router.get('/orders/salesRep', async (req, res) => {
