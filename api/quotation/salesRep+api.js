@@ -129,7 +129,7 @@ async function sendNotificationToSupervisor(message, title = 'Notification') {
     console.error('Failed to send FCM messages:', error);
     throw error;
   } finally {
-    client.release();
+    client.release(); 
   }
 }
 

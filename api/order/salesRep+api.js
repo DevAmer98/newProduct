@@ -111,31 +111,45 @@ router.post('/orders/salesRep', async (req, res) => {
 
       const orderResult = await withTimeout(
         client.query(
-          `INSERT INTO orders (client_id, username, delivery_date, delivery_type, notes, status, custom_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-          [client_id, username, formattedDate, delivery_type, notes || null, status, customId]
+          `INSERT INTO orders (client_id, username, delivery_date, delivery_type, notes, status, total_price, total_vat, total_subtotal, custom_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+          [client_id, username, formattedDate, delivery_type, notes || null, status,0, 0, 0, customId]
         ),
         10000 // 10-second timeout
       );
       const orderId = orderResult.rows[0].id;
 
-      let totalPrice = 0;
+      let totalPrice = 0, totalVat = 0, totalSubtotal = 0;
       for (const product of products) {
-        totalPrice += parseFloat(product.price);
+        const { section, type, description, quantity, price } = product;
+        if (!section || !type || !quantity || !price) {
+          throw new Error('Missing product details or price');
+        }
+        const numericPrice = parseFloat(price);
+        if (isNaN(numericPrice)) { throw new Error('Invalid price format'); }
+        const vat = numericPrice * 0.15;
+        const subtotal = numericPrice + vat;
+        totalPrice += numericPrice * quantity;
+        totalVat += vat * quantity;
+        totalSubtotal += subtotal * quantity;
         await client.query(
-          `INSERT INTO order_products (order_id, section, type, description, quantity, price)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [orderId, product.section, product.type, product.description, product.quantity, parseFloat(product.price)]
+          `INSERT INTO order_products (order_id, section, type, description, quantity, price, vat, subtotal)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [orderId, product.section, product.type, product.description, product.quantity, numericPrice, vat, subtotal]
         );
       }
 
-      await client.query(`UPDATE orders SET total_price = $1 WHERE id = $2`, [totalPrice, orderId]);
+      await client.query(`UPDATE orders SET total_price = $1, total_vat = $2, total_subtotal = $3 WHERE id = $4`, 
+        [totalPrice, totalVat, totalSubtotal, orderId]);
       await client.query('COMMIT');
 
       // Send notifications to supervisors
       await sendNotificationToSupervisor(`تم إنشاء طلب جديد بالمعرف ${customId} وينتظر موافقتك.`, 'إشعار طلب جديد');
 
-      return res.status(201).json({ orderId, customId, status: 'success', totalPrice });
+      return res.status(201).json({ orderId, customId, status: 'success',  
+        totalPrice,
+        totalVat,
+        totalSubtotal });
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -173,7 +187,9 @@ router.get('/orders/salesRep', async (req, res) => {
         orders.status,
         orders.storekeeperaccept,
         orders.actual_delivery_date,
-        orders.total_price 
+        orders.total_price
+        orders.total_vat,
+        orders.total_subtotal 
       FROM orders
       JOIN clients ON orders.client_id = clients.id
       WHERE orders.username = $4 AND 
